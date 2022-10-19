@@ -330,6 +330,9 @@
 </div>
 
 <style>
+  :root {
+    --accent: #49baf2;
+  }
   .outer_container {
     width: 100vw;
     height: 100vh;

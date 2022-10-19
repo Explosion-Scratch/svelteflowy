@@ -108,6 +108,9 @@
 />
 
 <style>
+  [contenteditable] {
+    min-width: 10px;
+  }
   *:focus {
     outline: none;
   }
@@ -117,7 +120,7 @@
   }
   .description:not(:focus) {
     white-space: nowrap;
-    max-height: 1.33em;
+    max-height: 1em;
     display: block;
     word-break: break-all;
     overflow: hidden;
