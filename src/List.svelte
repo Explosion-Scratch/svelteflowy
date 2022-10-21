@@ -224,11 +224,11 @@
                   .querySelector(`#item_${target.id} .editable`)
                   .dispatchEvent(new CustomEvent("api-focus"));
               };
-              item.children = item.children.filter((i) => i.id !== target.id);
-              //   TODO: Focus when indenting into collapsed cell
-              if (item.children[idx - 1].collapsed) {
-                item.children[idx - 1].collapsed = false;
+              for (let i of [item, item.children[idx - 1]]){
+                i.open = true;
               }
+              item.children = item.children.filter((i) => i.id !== target.id);
+              console.log(item)
               setTimeout(focus);
             }
           }}
