@@ -43,7 +43,9 @@
   {/if}
   {#each route as r, idx}
     {#if !Array.isArray(r)}
+      {@const filtered = route.filter(i => !Array.isArray(i))}
       <button
+        class:last={filtered.indexOf(r) === filtered.length - 1}
         class="crumb"
         on:click={() =>
           dispatch("click", { path: path.split(".").slice(0, idx + 1) })}
@@ -65,13 +67,18 @@
 </div>
 
 <style>
+  .crumb {
+    all: unset;
+  }
+
   .crumb_container {
     display: flex;
     color: #999;
+    font-size: .8em;
     align-items: center;
   }
-  .crumb {
-    all: unset;
+  .last {
+    color: #333;
   }
   .crumb:hover {
     all: unset;
@@ -89,15 +96,15 @@
     background: #0001;
   }
   svg {
-    width: 1.5rem;
+    width: 1.2rem;
     margin: 6px;
-    height: 1.5rem;
+    height: 1.2rem;
   }
   .nomargin {
     margin: none !important;
   }
   .right {
-    width: 1rem;
-    height: 1rem;
+    width: .9em;
+    height: .9em;
   }
 </style>

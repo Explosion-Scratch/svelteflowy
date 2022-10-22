@@ -4,8 +4,6 @@
   import BreadCrumb from "./BreadCrumb.svelte";
   let path;
   let bullet = {
-    text: "Hello <i>world</i>",
-    description: "Description",
     id: "tukpjtucg",
     completed: false,
     children: [
@@ -321,6 +319,7 @@
 <div class="outer_container">
   <div class="container">
     <List
+    outermost={true}
       on:change={changed}
       bind:item={current}
       isTop={true}

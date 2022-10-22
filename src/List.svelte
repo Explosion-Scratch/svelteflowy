@@ -8,6 +8,7 @@
   import E from "./Editable.svelte";
   export let item = {};
   export let isTop = false;
+  export let outermost = false;
   export let container;
   let options = {
     show: false,
@@ -63,7 +64,7 @@
 </script>
 
 <div class="item" bind:this={container} class:parentcompleted={item.completed}>
-  {#if isTop}
+  {#if isTop && item.text?.length}
     <h2 class="item_title" id="item_{item.id}">
       <E
         bind:value={item.text}
@@ -88,7 +89,8 @@
         }}
       />
     </h2>
-  {:else}
+  {/if}
+  {#if !isTop}
     <li
       class="item"
       id="item_{item.id}"
