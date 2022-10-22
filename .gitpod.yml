@@ -5,5 +5,3 @@
 tasks:
   - init: pnpm install && pnpm run build
     command: pnpm run start
-
-
