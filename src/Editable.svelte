@@ -102,6 +102,10 @@ function getTextNodeAtPosition(root, index) {
         window.savedCursors[currentId] = saveCursor(element);
         window.savedCursors[currentId]()
       } */
+      if (event.code === 'Backspace' && event.ctrlKey && event.shiftKey){
+        dispatch("delete");
+        e.preventDefault();
+      }
       if (e.key === "Backspace" && value.trim().length === 0) {
         dispatch("delete");
         e.preventDefault();

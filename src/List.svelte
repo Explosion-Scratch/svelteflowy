@@ -245,9 +245,13 @@
                 .querySelector(`#item_${item.children[idx - 1].id} .editable`)
                 .dispatchEvent(new CustomEvent("api-focus"));
             } else {
+              if (!container
+                .querySelector(`#item_${item.id} .editable`)){
+                  console.log(item, item.children, e.detail, document.querySelector(`#item_${e.detail.id}`))
+              }
               container
                 .querySelector(`#item_${item.id} .editable`)
-                .dispatchEvent(new CustomEvent("api-focus"));
+                ?.dispatchEvent(new CustomEvent("api-focus"));
             }
             item.children = item.children.filter((i) => i.id !== e.detail.id);
           }}
