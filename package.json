@@ -1,26 +1,28 @@
 {
-  "name": "svelte-app",
-  "version": "1.0.0",
+  "name": "svelteflowy",
+  "version": "2.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "start": "sirv public --no-clear"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^17.0.0",
-    "@rollup/plugin-node-resolve": "^11.0.0",
-    "less": "^4.1.2",
-    "rollup": "^2.3.4",
-    "rollup-plugin-css-only": "^3.1.0",
-    "rollup-plugin-livereload": "^2.0.0",
-    "rollup-plugin-svelte": "^7.0.0",
-    "rollup-plugin-terser": "^7.0.0",
-    "svelte": "^3.0.0",
-    "svelte-preprocess-less": "^0.4.0",
-    "tailwindcss": "^3.0.24"
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "svelte": "^5.16.2",
+    "vite": "^6.0.7"
   },
   "dependencies": {
-    "sirv-cli": "^2.0.0"
+    "@tiptap/core": "^2.11.2",
+    "@tiptap/extension-bubble-menu": "^2.11.2",
+    "@tiptap/extension-highlight": "^2.11.2",
+    "@tiptap/extension-link": "^2.11.2",
+    "@tiptap/extension-placeholder": "^2.11.2",
+    "@tiptap/extension-task-item": "^2.11.2",
+    "@tiptap/extension-task-list": "^2.11.2",
+    "@tiptap/pm": "^2.11.2",
+    "@tiptap/starter-kit": "^2.11.2",
+    "tiptap-markdown": "^0.8.10"
   }
 }
