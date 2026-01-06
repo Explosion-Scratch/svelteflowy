@@ -33,6 +33,7 @@
     height: 100%;
     color: rgb(220, 224, 226);
     transition: transform 0.2s ease;
+    transform: rotate(90deg);
   }
 
   svg:hover {
@@ -40,6 +41,6 @@
   }
 
   .collapsed svg {
-    transform: rotate(90deg);
+    transform: rotate(0deg);
   }
 </style>

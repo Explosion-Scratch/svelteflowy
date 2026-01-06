@@ -4,7 +4,7 @@
   import RichEditor from './RichEditor.svelte'
   import { itemStore } from '../stores/itemStore.js'
   import { generateId } from '../utils/id.js'
-  import { focusItem, getItemAbove, getItemBelow } from '../utils/focus.js'
+  import { focusItem, focusDescription, getItemAbove, getItemBelow, flattenVisible } from '../utils/focus.js'
   import { get } from 'svelte/store'
 
   export let item
@@ -14,7 +14,13 @@
 
   const dispatch = createEventDispatcher()
 
+  const { zoomedItemId, selection } = itemStore
+
   let containerElement
+  let showDescriptionEditor = false
+
+  $: isZoomedRoot = isTop && $zoomedItemId && item.id === $zoomedItemId
+  $: hasDescription = !!item.description?.trim()
 
   function handleNewBullet(event) {
     const afterId = event.detail.id
@@ -36,12 +42,27 @@
     }
   }
 
+  function handleForceDelete(event) {
+    const id = event.detail.id
+    const items = get(itemStore.items)
+    const prevItem = getItemAbove(items, id)
+    
+    itemStore.deleteItem(id)
+    
+    if (prevItem) {
+      tick().then(() => focusItem(prevItem.id))
+    } else {
+      dispatch('focusparent')
+    }
+  }
+
   function handleSelectUp(event) {
     const id = event.detail.id
     const items = get(itemStore.items)
     const prevItem = getItemAbove(items, id)
     
     if (prevItem) {
+      itemStore.clearSelection()
       focusItem(prevItem.id)
     } else {
       dispatch('focusparent')
@@ -54,12 +75,61 @@
     const nextItem = getItemBelow(items, id)
     
     if (nextItem) {
+      itemStore.clearSelection()
       focusItem(nextItem.id)
+    }
+  }
+
+  function handleShiftSelectUp(event) {
+    const id = event.detail.id
+    const items = get(itemStore.items)
+    const prevItem = getItemAbove(items, id)
+    
+    if (prevItem) {
+      itemStore.select(prevItem.id, true)
+      itemStore.select(id, true)
+    }
+  }
+
+  function handleShiftSelectDown(event) {
+    const id = event.detail.id
+    const items = get(itemStore.items)
+    const nextItem = getItemBelow(items, id)
+    
+    if (nextItem) {
+      itemStore.select(nextItem.id, true)
+      itemStore.select(id, true)
     }
   }
 
   function handleZoom(event) {
     itemStore.zoom(event.detail.item.id)
+  }
+
+  function handleDescriptionClick() {
+    showDescriptionEditor = true
+    tick().then(() => {
+      focusDescription(item.id)
+    })
+  }
+
+  function handleDescriptionChange(event) {
+    itemStore.updateItem(item.id, { description: event.detail.value })
+  }
+
+  function handleExitDescription() {
+    if (!item.description?.trim()) {
+      showDescriptionEditor = false
+    }
+    if (item.children?.length) {
+      focusItem(item.children[0].id)
+    }
+  }
+
+  function handleDescriptionBlur() {
+    if (!item.description?.trim()) {
+      showDescriptionEditor = false
+    }
   }
 
   function handleTitleNewBullet() {
@@ -98,6 +168,22 @@
       return
     }
     
+    if (item.children?.length) {
+      const lastChild = item.children[item.children.length - 1]
+      focusItem(lastChild.id)
+    } else {
+      const newId = generateId()
+      const newItem = { id: newId, text: '', description: '', completed: false, open: true, children: [] }
+      
+      itemStore.updateItem(item.id, {
+        children: [newItem]
+      })
+      
+      tick().then(() => focusItem(newId))
+    }
+  }
+
+  function handleAddItemClick() {
     const newId = generateId()
     const newItem = { id: newId, text: '', description: '', completed: false, open: true, children: [] }
     
@@ -113,6 +199,10 @@
     
     tick().then(() => focusItem(newId))
   }
+
+  function isItemSelected(childId) {
+    return $selection.has(childId)
+  }
 </script>
 
 <div 
@@ -121,7 +211,38 @@
   class:parentcompleted={item.completed}
   class:outermost
 >
-  {#if isTop && item.text?.length && !outermost}
+  {#if isZoomedRoot}
+    <h1 class="zoomed_title" id="item_{item.id}">
+      <RichEditor
+        bind:value={item.text}
+        {highlightPhrase}
+        showPlaceholder={false}
+        on:selectdown={handleTitleSelectDown}
+        on:newbullet={handleTitleNewBullet}
+        on:change={() => itemStore.updateItem(item.id, { text: item.text })}
+      />
+    </h1>
+
+    {#if hasDescription || showDescriptionEditor}
+      <div class="zoomed_description">
+        <RichEditor
+          bind:value={item.description}
+          isDescription={true}
+          showPlaceholder={false}
+          {highlightPhrase}
+          editorClass="editable description"
+          on:change={handleDescriptionChange}
+          on:delete={handleExitDescription}
+          on:exitdescription={handleExitDescription}
+          on:blur={handleDescriptionBlur}
+        />
+      </div>
+    {:else}
+      <button class="add-description-btn" on:click={handleDescriptionClick}>
+        Click to add description...
+      </button>
+    {/if}
+  {:else if isTop && item.text?.length && !outermost}
     <h2 class="item_title" id="item_{item.id}">
       <RichEditor
         bind:value={item.text}
@@ -140,11 +261,15 @@
         <div class="item-row">
           <Item
             item={child}
+            isSelected={isItemSelected(child.id)}
             {highlightPhrase}
             on:delete={handleDelete}
+            on:forcedelete={handleForceDelete}
             on:newbullet={handleNewBullet}
             on:selectup={handleSelectUp}
             on:selectdown={handleSelectDown}
+            on:shiftselectup={handleShiftSelectUp}
+            on:shiftselectdown={handleShiftSelectDown}
             on:zoom={handleZoom}
           />
 
@@ -168,14 +293,14 @@
       {/each}
       
       {#if outermost}
-        <li class="empty-slot" on:click|stopPropagation={handleEmptyAreaClick}>
-          <span class="empty-hint">Click to add item...</span>
+        <li class="empty-slot" on:click|stopPropagation={handleAddItemClick}>
+          <span class="empty-hint">Add item...</span>
         </li>
       {/if}
     </ul>
   {:else if isTop}
-    <div class="empty-area" on:click={handleEmptyAreaClick}>
-      <span class="empty-message">Click here to start...</span>
+    <div class="empty-slot add-first-item" on:click={handleAddItemClick}>
+      <span class="empty-hint">Add item...</span>
     </div>
   {/if}
 </div>
@@ -197,6 +322,35 @@
     opacity: 0.7;
   }
 
+  .zoomed_title {
+    margin: 1rem 0 0.25rem 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .zoomed_description {
+    width: 100%;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  .add-description-btn {
+    all: unset;
+    cursor: text;
+    color: #999;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    display: block;
+    width: 100%;
+    transition: color 0.15s ease;
+  }
+
+  .add-description-btn:hover {
+    color: #666;
+  }
+
   .item_title {
     margin: 0 0 0.5rem 0;
     font-size: 1.5rem;
@@ -216,23 +370,34 @@
 
   .nested-container {
     display: flex;
-    margin-left: 0.8rem;
+    margin-left: 2.55rem;
   }
 
   .indent-line {
     all: unset;
+    position: relative;
     width: 1px;
     background: #e0e0e0;
-    margin-left: 0.55rem;
+    margin-left: 0.45rem;
     margin-right: 0.5rem;
     cursor: pointer;
-    transition: background 0.15s ease, width 0.15s ease;
+    transition: background 0.15s ease;
     flex-shrink: 0;
+  }
+
+  .indent-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -12px;
+    right: -12px;
   }
 
   .indent-line:hover {
     background: var(--accent, #49baf2);
     width: 2px;
+    margin-right: calc(0.5rem - 1px);
   }
 
   .nested-content {
@@ -241,39 +406,25 @@
   }
 
   .empty-slot {
-    padding: 0.3rem 0;
-    padding-left: 2.6rem;
+    padding: 0.5rem 0;
+    padding-left: 2.55rem;
     opacity: 0;
     transition: opacity 0.15s ease;
     cursor: text;
     font-size: 0.9rem;
     color: #999;
+    min-height: 1.5rem;
+    display: flex;
+    align-items: center;
   }
 
   ul:hover .empty-slot {
     opacity: 1;
   }
 
-  .empty-area {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100px;
-    border: 2px dashed #e0e0e0;
-    border-radius: 8px;
-    margin-top: 1rem;
-    cursor: text;
-    transition: border-color 0.15s ease, background 0.15s ease;
-  }
-
-  .empty-area:hover {
-    border-color: var(--accent, #49baf2);
-    background: rgba(73, 186, 242, 0.05);
-  }
-
-  .empty-message {
-    color: #999;
-    font-size: 0.9rem;
+  .add-first-item {
+    padding-left: 0;
+    opacity: 1;
   }
 
   .empty-hint {

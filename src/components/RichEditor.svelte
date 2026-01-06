@@ -319,6 +319,12 @@
     border-radius: 2px;
   }
 
+  :global(.hashtag .search-highlight) {
+    padding: 0;
+    border-radius: 0;
+    background: rgba(255, 235, 59, 0.6);
+  }
+
   :global(.ProseMirror-focused) {
     outline: none;
   }

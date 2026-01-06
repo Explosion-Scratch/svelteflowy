@@ -23,6 +23,7 @@
   $: isCheckboxChecked = /^\[x\]\s/.test(item.text || '')
   $: displayText = hasCheckboxSyntax ? item.text.replace(/^\[( |x)\]\s/, '') : item.text
   $: hasDescription = !!item.description?.trim()
+  $: hasChildren = item.children?.length > 0
 
   function handleToggleComplete() {
     if (hasCheckboxSyntax) {
@@ -37,6 +38,10 @@
 
   function handleDelete() {
     dispatch('delete', { id: item.id })
+  }
+
+  function handleForceDelete() {
+    dispatch('forcedelete', { id: item.id })
   }
 
   function handleNewBullet() {
@@ -59,6 +64,14 @@
 
   function handleSelectDown() {
     dispatch('selectdown', { id: item.id })
+  }
+
+  function handleShiftSelectUp() {
+    dispatch('shiftselectup', { id: item.id })
+  }
+
+  function handleShiftSelectDown() {
+    dispatch('shiftselectdown', { id: item.id })
   }
 
   function handleShowDescription() {
@@ -129,10 +142,9 @@
   class="item"
   class:completed={item.completed || isCheckboxChecked}
   class:selected={isSelected}
-  class:nochildren={!item.children?.length}
 >
   <div class="top">
-    <div class="options">
+    <div class="left-controls">
       <button class="menu-trigger" on:click={handleMenuClick} title="Options">
         <svg width="16" height="16" viewBox="0 0 256 256">
           <path
@@ -147,63 +159,69 @@
           on:close={() => showMenu = false}
         />
       {/if}
-      {#if item.children?.length}
-        <Collapse
-          collapsed={!item.open}
-          on:change={handleToggleOpen}
-        />
-      {/if}
+      <div class="collapse-slot">
+        {#if hasChildren}
+          <Collapse
+            collapsed={!item.open}
+            on:change={handleToggleOpen}
+          />
+        {/if}
+      </div>
     </div>
 
-    <div class="bullets">
-      <Bullet
-        background={!!item.children?.length && !item.open}
-        on:click={handleZoom}
-      />
-      {#if hasCheckboxSyntax}
-        <Checkbox 
-          checked={isCheckboxChecked}
-          on:click={handleToggleComplete} 
+    <div class="content-area">
+      <div class="bullet-line">
+        <Bullet
+          background={hasChildren && !item.open}
+          on:click={handleZoom}
         />
-      {/if}
-    </div>
+        {#if hasCheckboxSyntax}
+          <Checkbox 
+            checked={isCheckboxChecked}
+            on:click={handleToggleComplete} 
+          />
+        {/if}
+        <div class="title-editor">
+          <RichEditor
+            bind:this={titleEditorRef}
+            value={displayText}
+            showPlaceholder={false}
+            {highlightPhrase}
+            on:change={handleTextChange}
+            on:delete={handleDelete}
+            on:forcedelete={handleForceDelete}
+            on:newbullet={handleNewBullet}
+            on:indent={handleIndent}
+            on:outdent={handleOutdent}
+            on:selectup={handleSelectUp}
+            on:selectdown={handleSelectDown}
+            on:shiftselectup={handleShiftSelectUp}
+            on:shiftselectdown={handleShiftSelectDown}
+            on:togglecomplete={handleToggleComplete}
+            on:description={handleShowDescription}
+            on:hashtagclick={handleHashtagClick}
+          />
+        </div>
+      </div>
 
-    <div class="title-editor">
-      <RichEditor
-        bind:this={titleEditorRef}
-        value={displayText}
-        showPlaceholder={false}
-        {highlightPhrase}
-        on:change={handleTextChange}
-        on:delete={handleDelete}
-        on:newbullet={handleNewBullet}
-        on:indent={handleIndent}
-        on:outdent={handleOutdent}
-        on:selectup={handleSelectUp}
-        on:selectdown={handleSelectDown}
-        on:togglecomplete={handleToggleComplete}
-        on:description={handleShowDescription}
-        on:hashtagclick={handleHashtagClick}
-      />
+      {#if hasDescription || showDescriptionEditor}
+        <div class="description-editor">
+          <RichEditor
+            bind:value={item.description}
+            isDescription={true}
+            showPlaceholder={false}
+            {highlightPhrase}
+            editorClass="editable description"
+            on:change={handleDescriptionChange}
+            on:delete={handleExitDescription}
+            on:exitdescription={handleExitDescription}
+            on:togglecomplete={handleToggleComplete}
+            on:hashtagclick={handleHashtagClick}
+          />
+        </div>
+      {/if}
     </div>
   </div>
-
-  {#if hasDescription || showDescriptionEditor}
-    <div class="description-editor">
-      <RichEditor
-        bind:value={item.description}
-        isDescription={true}
-        showPlaceholder={false}
-        {highlightPhrase}
-        editorClass="editable description"
-        on:change={handleDescriptionChange}
-        on:delete={handleExitDescription}
-        on:exitdescription={handleExitDescription}
-        on:togglecomplete={handleToggleComplete}
-        on:hashtagclick={handleHashtagClick}
-      />
-    </div>
-  {/if}
 </li>
 
 <style>
@@ -215,17 +233,13 @@
     flex-direction: column;
   }
 
-  .nochildren .options {
-    min-width: 1rem;
-  }
-
   .completed :global(.title-editor .editable) {
     text-decoration: line-through;
     opacity: 0.6;
   }
 
   .selected {
-    background: rgba(73, 186, 242, 0.1);
+    background: rgba(73, 186, 242, 0.15);
     border-radius: 4px;
   }
 
@@ -235,11 +249,18 @@
     width: 100%;
   }
 
-  .options {
+  .left-controls {
     display: flex;
     align-items: center;
-    min-width: 1.8rem;
+    flex-shrink: 0;
     position: relative;
+  }
+
+  .collapse-slot {
+    width: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .menu-trigger {
@@ -263,10 +284,16 @@
     color: #666 !important;
   }
 
-  .bullets {
+  .content-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bullet-line {
     display: flex;
     align-items: center;
-    flex-shrink: 0;
   }
 
   .title-editor {
@@ -275,7 +302,7 @@
   }
 
   .description-editor {
-    margin-left: 2.8rem;
+    margin-left: 1.3rem;
     font-size: 0.85rem;
   }
 </style>
