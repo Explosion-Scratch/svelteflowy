@@ -74,6 +74,9 @@
         onDelete: () => {
           dispatch('delete')
         },
+        onForceDelete: () => {
+          dispatch('forcedelete')
+        },
         onTab: () => {
           if (isDescription) {
             editor?.commands.insertContent('\t')
@@ -91,6 +94,12 @@
         },
         onArrowDown: () => {
           dispatch('selectdown')
+        },
+        onShiftArrowUp: () => {
+          dispatch('shiftselectup')
+        },
+        onShiftArrowDown: () => {
+          dispatch('shiftselectdown')
         }
       }),
       BubbleMenu.configure({

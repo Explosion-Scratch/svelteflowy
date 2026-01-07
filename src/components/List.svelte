@@ -370,7 +370,7 @@
 
   .nested-container {
     display: flex;
-    margin-left: 2.55rem;
+    margin-left: 0.5rem;
   }
 
   .indent-line {
@@ -378,8 +378,8 @@
     position: relative;
     width: 1px;
     background: #e0e0e0;
-    margin-left: 0.45rem;
-    margin-right: 0.5rem;
+    margin-left: 0;
+    margin-right: 0.75rem;
     cursor: pointer;
     transition: background 0.15s ease;
     flex-shrink: 0;
@@ -397,7 +397,7 @@
   .indent-line:hover {
     background: var(--accent, #49baf2);
     width: 2px;
-    margin-right: calc(0.5rem - 1px);
+    margin-right: calc(0.75rem - 1px);
   }
 
   .nested-content {
@@ -407,7 +407,7 @@
 
   .empty-slot {
     padding: 0.5rem 0;
-    padding-left: 2.55rem;
+    padding-left: 0.5rem;
     opacity: 0;
     transition: opacity 0.15s ease;
     cursor: text;

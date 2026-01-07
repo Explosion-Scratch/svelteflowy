@@ -111,9 +111,54 @@
     itemStore.updateItem(item.id, { description: event.detail.value })
   }
 
+  let menuPosition = { x: 0, y: 0 }
+  let menuTriggerRef
+
+  function calculateMenuPosition() {
+    if (!itemElement) return { x: 0, y: 0 }
+    
+    const bulletEl = itemElement.querySelector(':scope > .top > .content-area > .bullet-line > .zoom')
+    const bulletLine = itemElement.querySelector(':scope > .top > .content-area > .bullet-line')
+    const descEditor = itemElement.querySelector(':scope > .top > .content-area > .description-editor')
+    
+    let x = 0
+    let y = 0
+    
+    if (bulletEl) {
+      const bulletRect = bulletEl.getBoundingClientRect()
+      x = bulletRect.left
+    } else {
+      x = itemElement.getBoundingClientRect().left
+    }
+    
+    if (descEditor) {
+      const descRect = descEditor.getBoundingClientRect()
+      y = descRect.bottom + 4
+    } else if (bulletLine) {
+      const lineRect = bulletLine.getBoundingClientRect()
+      y = lineRect.bottom + 4
+    } else {
+      y = itemElement.getBoundingClientRect().bottom + 4
+    }
+    
+    return { x, y }
+  }
+
   function handleMenuClick(e) {
     e.stopPropagation()
-    showMenu = !showMenu
+    if (showMenu) {
+      showMenu = false
+    } else {
+      menuPosition = calculateMenuPosition()
+      showMenu = true
+    }
+  }
+
+  function handleContextMenu(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    menuPosition = calculateMenuPosition()
+    showMenu = true
   }
 
   function handleMenuAction(event) {
@@ -142,6 +187,7 @@
   class="item"
   class:completed={item.completed || isCheckboxChecked}
   class:selected={isSelected}
+  on:contextmenu={handleContextMenu}
 >
   <div class="top">
     <div class="left-controls">
@@ -155,18 +201,17 @@
       </button>
       {#if showMenu}
         <ItemMenu
+          position={menuPosition}
           on:action={handleMenuAction}
           on:close={() => showMenu = false}
         />
       {/if}
-      <div class="collapse-slot">
-        {#if hasChildren}
-          <Collapse
-            collapsed={!item.open}
-            on:change={handleToggleOpen}
-          />
-        {/if}
-      </div>
+      {#if hasChildren}
+        <Collapse
+          collapsed={!item.open}
+          on:change={handleToggleOpen}
+        />
+      {/if}
     </div>
 
     <div class="content-area">
@@ -236,6 +281,14 @@
   .completed :global(.title-editor .editable) {
     text-decoration: line-through;
     opacity: 0.6;
+    transition: text-decoration-color 0.3s ease, opacity 0.3s ease;
+    text-decoration-color: currentColor;
+  }
+
+  :global(.title-editor .editable) {
+    text-decoration: none;
+    text-decoration-color: transparent;
+    transition: text-decoration-color 0.3s ease, opacity 0.3s ease;
   }
 
   .selected {
@@ -250,17 +303,18 @@
   }
 
   .left-controls {
+    position: absolute;
+    left: -2.2rem;
+    top: 0.15rem;
     display: flex;
     align-items: center;
-    flex-shrink: 0;
-    position: relative;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    z-index: 10;
   }
 
-  .collapse-slot {
-    width: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .item:hover .left-controls {
+    opacity: 1;
   }
 
   .menu-trigger {
@@ -268,20 +322,16 @@
     cursor: pointer;
     padding: 2px;
     border-radius: 4px;
-    color: transparent;
+    color: #ccc;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: color 0.1s ease;
   }
 
-  .item:hover .menu-trigger {
-    color: #ccc;
-  }
-
   .menu-trigger:hover {
     background: #f0f0f0;
-    color: #666 !important;
+    color: #666;
   }
 
   .content-area {

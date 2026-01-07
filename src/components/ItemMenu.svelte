@@ -1,6 +1,10 @@
 <script>
   import { createEventDispatcher } from 'svelte'
   import { clickOutside } from '../actions/clickOutside.js'
+  import { fade, scale } from 'svelte/transition'
+  import { backOut } from 'svelte/easing'
+
+  export let position = { x: 0, y: 0 }
 
   const dispatch = createEventDispatcher()
 
@@ -18,8 +22,11 @@
 
 <div
   class="menu"
+  style="left: {position.x}px; top: {position.y}px;"
   use:clickOutside
   on:click_outside={() => dispatch('close')}
+  in:scale={{ duration: 150, start: 0.95, easing: backOut }}
+  out:fade={{ duration: 100 }}
 >
   {#each menuItems as item}
     <button
@@ -35,9 +42,7 @@
 
 <style>
   .menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
+    position: fixed;
     z-index: 1000;
     background: white;
     border: 1px solid #eee;
@@ -45,6 +50,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     min-width: 160px;
     padding: 4px 0;
+    transform-origin: top left;
   }
 
   .menu-item {
@@ -79,3 +85,4 @@
     opacity: 0.6;
   }
 </style>
+

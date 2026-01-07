@@ -9,10 +9,13 @@ export const KeyboardExtension = Extension.create({
       onShiftEnter: null,
       onCommandEnter: null,
       onDelete: null,
+      onForceDelete: null,
       onTab: null,
       onShiftTab: null,
       onArrowUp: null,
       onArrowDown: null,
+      onShiftArrowUp: null,
+      onShiftArrowDown: null,
       isDescription: false
     }
   },
@@ -59,6 +62,22 @@ export const KeyboardExtension = Extension.create({
         return false
       },
 
+      'Mod-Delete': ({ editor }) => {
+        if (this.options.onForceDelete) {
+          this.options.onForceDelete()
+          return true
+        }
+        return false
+      },
+
+      'Mod-Backspace': ({ editor }) => {
+        if (this.options.onForceDelete) {
+          this.options.onForceDelete()
+          return true
+        }
+        return false
+      },
+
       'Tab': () => {
         if (this.options.onTab) {
           this.options.onTab()
@@ -86,6 +105,22 @@ export const KeyboardExtension = Extension.create({
       'ArrowDown': () => {
         if (this.options.onArrowDown) {
           this.options.onArrowDown()
+          return true
+        }
+        return false
+      },
+
+      'Shift-ArrowUp': () => {
+        if (this.options.onShiftArrowUp) {
+          this.options.onShiftArrowUp()
+          return true
+        }
+        return false
+      },
+
+      'Shift-ArrowDown': () => {
+        if (this.options.onShiftArrowDown) {
+          this.options.onShiftArrowDown()
           return true
         }
         return false

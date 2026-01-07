@@ -74,7 +74,7 @@ export function getItemBelow(rootOrZoomed, currentId) {
   return null
 }
 
-function flattenVisible(item, result = []) {
+export function flattenVisible(item, result = []) {
   if (item.children) {
     for (const child of item.children) {
       result.push(child)

@@ -4,14 +4,17 @@
   import SearchBar from './components/SearchBar.svelte'
   import { itemStore } from './stores/itemStore.js'
   import { flattenVisibleTree } from './utils/tree.js'
-  import { focusItem } from './utils/focus.js'
+  import { focusItem, flattenVisible } from './utils/focus.js'
   import { tick } from 'svelte'
   import { generateId } from './utils/id.js'
 
   const { items, filteredItems, highlightPhrase, selection, zoomedItemId, zoomedItem } = itemStore
 
-  let isSelecting = false
-  let selectionStartId = null
+  let isDragging = false
+  let dragStartX = 0
+  let dragStartY = 0
+  let selectionBox = null
+  let containerRef
 
   function handleCopyJson() {
     const data = JSON.stringify($items, null, 2)
@@ -48,6 +51,7 @@
     if (event.key === 'Escape') {
       itemStore.clearSelection()
       itemStore.clearSearch()
+      selectionBox = null
     }
   }
 
@@ -60,45 +64,91 @@
     return null
   }
 
+  function rectsIntersect(r1, r2) {
+    return !(r2.left > r1.right || 
+             r2.right < r1.left || 
+             r2.top > r1.bottom ||
+             r2.bottom < r1.top)
+  }
+
+  function getItemsInBox(box) {
+    const itemElements = document.querySelectorAll('.item')
+    const selectedIds = []
+    
+    for (const el of itemElements) {
+      const rect = el.getBoundingClientRect()
+      if (rectsIntersect(box, rect)) {
+        const id = el.id.replace('item_', '')
+        if (id) selectedIds.push(id)
+      }
+    }
+    
+    return selectedIds
+  }
+
   function handleMouseDown(event) {
     if (event.target.closest('[contenteditable]') || event.target.closest('button')) {
       return
     }
-    
+
     const itemId = getItemIdFromElement(event.target)
+    
     if (itemId) {
-      isSelecting = true
-      selectionStartId = itemId
-      
       if (event.shiftKey || event.metaKey || event.ctrlKey) {
         itemStore.select(itemId, true)
       } else {
         itemStore.clearSelection()
         itemStore.select(itemId, false)
       }
+      return
+    }
+
+    isDragging = true
+    dragStartX = event.clientX
+    dragStartY = event.clientY
+    selectionBox = null
+    
+    if (!event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      itemStore.clearSelection()
     }
   }
 
   function handleMouseMove(event) {
-    if (!isSelecting || !selectionStartId) return
+    if (!isDragging) return
+
+    const currentX = event.clientX
+    const currentY = event.clientY
     
-    const itemId = getItemIdFromElement(event.target)
-    if (itemId && itemId !== selectionStartId) {
-      const flatItems = flattenVisibleTree($filteredItems.tree)
-      const startIdx = flatItems.findIndex(i => i.id === selectionStartId)
-      const endIdx = flatItems.findIndex(i => i.id === itemId)
+    const left = Math.min(dragStartX, currentX)
+    const top = Math.min(dragStartY, currentY)
+    const right = Math.max(dragStartX, currentX)
+    const bottom = Math.max(dragStartY, currentY)
+    
+    const width = right - left
+    const height = bottom - top
+    
+    if (width > 5 || height > 5) {
+      selectionBox = { left, top, right, bottom, width, height }
       
-      if (startIdx !== -1 && endIdx !== -1) {
-        const minIdx = Math.min(startIdx, endIdx)
-        const maxIdx = Math.max(startIdx, endIdx)
-        const selectedIds = flatItems.slice(minIdx, maxIdx + 1).map(i => i.id)
-        itemStore.selectRange(selectedIds)
-      }
+      const selectedIds = getItemsInBox(selectionBox)
+      itemStore.selectRange(selectedIds)
+      
+      document.querySelectorAll('.item').forEach(el => {
+        el.classList.remove('drag-selecting')
+      })
+      selectedIds.forEach(id => {
+        const el = document.querySelector(`#item_${id}`)
+        if (el) el.classList.add('drag-selecting')
+      })
     }
   }
 
   function handleMouseUp() {
-    isSelecting = false
+    isDragging = false
+    selectionBox = null
+    document.querySelectorAll('.item.drag-selecting').forEach(el => {
+      el.classList.remove('drag-selecting')
+    })
   }
 
   function handleContainerClick(event) {
@@ -115,6 +165,7 @@
 <svelte:window 
   on:keydown={handleGlobalKeyDown} 
   on:mouseup={handleMouseUp}
+  on:mousemove={handleMouseMove}
 />
 
 <div class="header">
@@ -136,8 +187,8 @@
 
 <div 
   class="outer_container"
+  bind:this={containerRef}
   on:mousedown={handleMouseDown}
-  on:mousemove={handleMouseMove}
   on:click={handleContainerClick}
 >
   <div class="container">
@@ -149,6 +200,13 @@
     />
   </div>
 </div>
+
+{#if selectionBox}
+  <div 
+    class="selection-box"
+    style="left: {selectionBox.left}px; top: {selectionBox.top}px; width: {selectionBox.width}px; height: {selectionBox.height}px;"
+  ></div>
+{/if}
 
 <style>
   :root {
@@ -220,6 +278,14 @@
     color: #666;
   }
 
+  .selection-box {
+    position: fixed;
+    background: rgba(73, 186, 242, 0.1);
+    border: 1px solid rgba(73, 186, 242, 0.5);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
   :global(::-webkit-scrollbar-thumb) {
     background-color: rgb(236, 238, 240);
     border-radius: 4px;
@@ -227,5 +293,10 @@
 
   :global(::-webkit-scrollbar) {
     width: 8px;
+  }
+
+  :global(.item.drag-selecting) {
+    background: rgba(73, 186, 242, 0.15);
+    border-radius: 4px;
   }
 </style>
