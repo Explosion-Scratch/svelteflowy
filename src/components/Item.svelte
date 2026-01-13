@@ -20,17 +20,18 @@
   let titleEditorRef
 
   $: hasCheckboxSyntax = /^\[( |x)\]\s/.test(item.text || '')
-  $: isCheckboxChecked = /^\[x\]\s/.test(item.text || '')
+  $: isCheckboxChecked = /^\[x\]\s/.test(item.text || '') || item.completed
   $: displayText = hasCheckboxSyntax ? item.text.replace(/^\[( |x)\]\s/, '') : item.text
   $: hasDescription = !!item.description?.trim()
   $: hasChildren = item.children?.length > 0
 
   function handleToggleComplete() {
     if (hasCheckboxSyntax) {
-      const newText = isCheckboxChecked
-        ? item.text.replace(/^\[x\]\s/, '[ ] ')
-        : item.text.replace(/^\[ \]\s/, '[x] ')
-      itemStore.updateItem(item.id, { text: newText })
+      const newChecked = !isCheckboxChecked
+      const newText = newChecked
+        ? item.text.replace(/^\[ \]\s/, '[x] ')
+        : item.text.replace(/^\[x\]\s/, '[ ] ')
+      itemStore.updateItem(item.id, { text: newText, completed: newChecked })
     } else {
       itemStore.toggleComplete(item.id)
     }

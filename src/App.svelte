@@ -16,6 +16,7 @@
   let dragStartY = 0
   let selectionBox = null
   let containerRef
+  let justFinishedDragSelection = false
 
   async function handleCopy() {
     if ($selection.size > 0) {
@@ -33,6 +34,15 @@
       }
     }
 
+    if ((event.metaKey || event.ctrlKey) && event.key === 'x') {
+      if ($selection.size > 0) {
+        event.preventDefault()
+        itemStore.copySelected().then(() => {
+          itemStore.deleteSelected()
+        })
+      }
+    }
+
     if ((event.metaKey || event.ctrlKey) && event.key === 'v') {
       event.preventDefault()
       itemStore.paste($zoomedItemId)
@@ -42,6 +52,14 @@
       if ($selection.size > 0 && !event.target.closest('[contenteditable]')) {
         event.preventDefault()
         itemStore.deleteSelected()
+      } else if (!event.target.closest('[contenteditable]')) {
+        event.preventDefault()
+        const currentRoot = $zoomedItem || $filteredItems.tree
+        const flat = flattenVisibleTree(currentRoot)
+        if (flat.length > 0) {
+          const lastItem = flat[flat.length - 1]
+          focusItem(lastItem.id)
+        }
       }
     }
 
@@ -56,6 +74,25 @@
       itemStore.clearSelection()
       itemStore.clearSearch()
       selectionBox = null
+    }
+
+    if (event.key === 'Enter' && !event.target.closest('[contenteditable]') && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+      event.preventDefault()
+      const currentRoot = $zoomedItem || $filteredItems.tree
+      const newId = generateId()
+      const newItem = { id: newId, text: '', description: '', completed: false, open: true, children: [] }
+      
+      if (currentRoot.children?.length) {
+        itemStore.updateItem(currentRoot.id, {
+          children: [...currentRoot.children, newItem]
+        })
+      } else {
+        itemStore.updateItem(currentRoot.id, {
+          children: [newItem]
+        })
+      }
+      
+      tick().then(() => focusItem(newId))
     }
 
     if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
@@ -100,22 +137,42 @@
     return selectedIds
   }
 
+  let potentialDragStart = null
+
   function handleMouseDown(event) {
-    if (event.target.closest('[contenteditable]') || event.target.closest('button')) {
+    if (event.target.closest('button')) {
       return
     }
 
-    isDragging = true
-    dragStartX = event.clientX
-    dragStartY = event.clientY
+    potentialDragStart = { x: event.clientX, y: event.clientY, fromEditor: !!event.target.closest('[contenteditable]') }
+    isDragging = false
     selectionBox = null
   }
 
   function handleMouseMove(event) {
-    if (!isDragging) return
+    if (!potentialDragStart) return
 
     const currentX = event.clientX
     const currentY = event.clientY
+    const dx = currentX - potentialDragStart.x
+    const dy = currentY - potentialDragStart.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    
+    if (!isDragging && distance > 5) {
+      isDragging = true
+      dragStartX = potentialDragStart.x
+      dragStartY = potentialDragStart.y
+      
+      if (potentialDragStart.fromEditor) {
+        const activeEl = document.activeElement
+        if (activeEl && activeEl.closest('[contenteditable]')) {
+          activeEl.blur()
+        }
+        window.getSelection()?.removeAllRanges()
+      }
+    }
+
+    if (!isDragging) return
     
     const left = Math.min(dragStartX, currentX)
     const top = Math.min(dragStartY, currentY)
@@ -125,20 +182,18 @@
     const width = right - left
     const height = bottom - top
     
-    if (width > 5 || height > 5) {
-      selectionBox = { left, top, right, bottom, width, height }
-      
-      const selectedIds = getItemsInBox(selectionBox)
-      itemStore.selectRange(selectedIds)
-      
-      document.querySelectorAll('.item').forEach(el => {
-        el.classList.remove('drag-selecting')
-      })
-      selectedIds.forEach(id => {
-        const el = document.querySelector(`#item_${id}`)
-        if (el) el.classList.add('drag-selecting')
-      })
-    }
+    selectionBox = { left, top, right, bottom, width, height }
+    
+    const selectedIds = getItemsInBox(selectionBox)
+    itemStore.selectRange(selectedIds)
+    
+    document.querySelectorAll('.item').forEach(el => {
+      el.classList.remove('drag-selecting')
+    })
+    selectedIds.forEach(id => {
+      const el = document.querySelector(`#item_${id}`)
+      if (el) el.classList.add('drag-selecting')
+    })
   }
 
   function handleMouseUp(event) {
@@ -147,6 +202,18 @@
     
     isDragging = false
     selectionBox = null
+    potentialDragStart = null
+    
+    if (hadDragBox) {
+      justFinishedDragSelection = true
+      
+      if ($selection.size > 0) {
+        const activeEl = document.activeElement
+        if (activeEl && activeEl.closest('[contenteditable]')) {
+          activeEl.blur()
+        }
+      }
+    }
     
     requestAnimationFrame(() => {
       document.querySelectorAll('.item.drag-selecting').forEach(el => {
@@ -175,6 +242,11 @@
   }
 
   function handleContainerClick(event) {
+    if (justFinishedDragSelection) {
+      justFinishedDragSelection = false
+      return
+    }
+    
     if (event.target.closest('.item') || 
         event.target.closest('button') || 
         event.target.closest('[contenteditable]') ||

@@ -284,6 +284,7 @@
     border: 1px solid #ddd;
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    visibility: hidden;
   }
 
   .bubble-menu button {
@@ -346,5 +347,60 @@
     float: left;
     height: 0;
     pointer-events: none;
+  }
+
+  :global(.inline-checkbox) {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  :global(.checkbox-button) {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    color: #999;
+    transition: all 0.15s ease;
+  }
+
+  :global(.checkbox-button:hover) {
+    color: #666;
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  :global(.checkbox-button.checked) {
+    color: var(--accent, #49baf2);
+  }
+
+  :global(.checkbox-button.checked:hover) {
+    color: var(--accent, #49baf2);
+    background: rgba(73, 186, 242, 0.1);
+  }
+
+  :global(.checkbox-button svg) {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.15s ease;
+  }
+
+  :global(.checkbox-button.checked svg) {
+    animation: checkPop 0.2s ease;
+  }
+
+  @keyframes checkPop {
+    0% { transform: scale(0.8); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  :global(.ProseMirror:has(.inline-checkbox .checkbox-button.checked)) {
+    text-decoration: line-through;
+    opacity: 0.6;
+    text-decoration-color: currentColor;
   }
 </style>

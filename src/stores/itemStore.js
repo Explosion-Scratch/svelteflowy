@@ -66,6 +66,8 @@ function createItemStore() {
   const items = writable(loadFromStorage())
   const searchQuery = writable('')
   const selection = writable(new Set())
+  const selectionAnchor = writable(null)
+  const selectionDirection = writable(null)
   const zoomedItemId = writable(null)
   const clipboardItems = writable([])
 
@@ -282,8 +284,26 @@ function createItemStore() {
     })
   }
 
+  function removeFromSelection(id) {
+    selection.update(sel => {
+      const newSel = new Set(sel)
+      newSel.delete(id)
+      return newSel
+    })
+  }
+
+  function setSelectionAnchor(id) {
+    selectionAnchor.set(id)
+  }
+
   function clearSelection() {
     selection.set(new Set())
+    selectionAnchor.set(null)
+    selectionDirection.set(null)
+  }
+
+  function setSelectionDirection(direction) {
+    selectionDirection.set(direction)
   }
 
   async function copySelected() {
@@ -353,6 +373,8 @@ function createItemStore() {
     items,
     searchQuery,
     selection,
+    selectionAnchor,
+    selectionDirection,
     zoomedItemId,
     zoomedItem,
     filteredItems,
@@ -372,6 +394,9 @@ function createItemStore() {
     select,
     selectRange,
     addToSelection,
+    removeFromSelection,
+    setSelectionAnchor,
+    setSelectionDirection,
     clearSelection,
     copySelected,
     paste,

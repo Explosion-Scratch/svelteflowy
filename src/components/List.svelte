@@ -14,7 +14,7 @@
 
   const dispatch = createEventDispatcher()
 
-  const { zoomedItemId, selection } = itemStore
+  const { zoomedItemId, selection, selectionAnchor, selectionDirection } = itemStore
 
   let containerElement
   let showDescriptionEditor = false
@@ -85,11 +85,28 @@
     const items = get(itemStore.items)
     const prevItem = getItemAbove(items, id)
     
-    if (prevItem) {
+    if (!prevItem) return
+
+    const currentAnchor = get(selectionAnchor)
+    const currentSelection = get(selection)
+    const lastDirection = get(selectionDirection)
+
+    if (currentSelection.size === 0) {
+      itemStore.setSelectionAnchor(id)
       itemStore.addToSelection(id)
       itemStore.addToSelection(prevItem.id)
-      focusItem(prevItem.id)
+      itemStore.setSelectionDirection('up')
+    } else if (lastDirection === 'down' && currentAnchor && id !== currentAnchor) {
+      itemStore.removeFromSelection(id)
+      if (currentSelection.size <= 2) {
+        itemStore.setSelectionDirection(null)
+      }
+    } else {
+      itemStore.addToSelection(prevItem.id)
+      itemStore.setSelectionDirection('up')
     }
+    
+    focusItem(prevItem.id)
   }
 
   function handleShiftSelectDown(event) {
@@ -97,11 +114,28 @@
     const items = get(itemStore.items)
     const nextItem = getItemBelow(items, id)
     
-    if (nextItem) {
+    if (!nextItem) return
+
+    const currentAnchor = get(selectionAnchor)
+    const currentSelection = get(selection)
+    const lastDirection = get(selectionDirection)
+
+    if (currentSelection.size === 0) {
+      itemStore.setSelectionAnchor(id)
       itemStore.addToSelection(id)
       itemStore.addToSelection(nextItem.id)
-      focusItem(nextItem.id)
+      itemStore.setSelectionDirection('down')
+    } else if (lastDirection === 'up' && currentAnchor && id !== currentAnchor) {
+      itemStore.removeFromSelection(id)
+      if (currentSelection.size <= 2) {
+        itemStore.setSelectionDirection(null)
+      }
+    } else {
+      itemStore.addToSelection(nextItem.id)
+      itemStore.setSelectionDirection('down')
     }
+    
+    focusItem(nextItem.id)
   }
 
   function handleZoom(event) {
@@ -111,7 +145,16 @@
   function handleDescriptionClick() {
     showDescriptionEditor = true
     tick().then(() => {
-      focusDescription(item.id)
+      requestAnimationFrame(() => {
+        if (containerElement) {
+          const el = containerElement.querySelector('.zoomed_description [contenteditable]')
+          if (el) {
+            el.focus()
+            return
+          }
+        }
+        focusDescription(item.id)
+      })
     })
   }
 
@@ -263,7 +306,7 @@
         <div class="item-row">
           <Item
             item={child}
-            isSelected={isItemSelected(child.id)}
+            isSelected={$selection.has(child.id)}
             {highlightPhrase}
             on:delete={handleDelete}
             on:forcedelete={handleForceDelete}
