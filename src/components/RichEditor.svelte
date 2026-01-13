@@ -9,6 +9,7 @@
   import { HashtagExtension } from '../extensions/HashtagExtension.js'
   import { HighlightSearchExtension } from '../extensions/HighlightSearchExtension.js'
   import { KeyboardExtension } from '../extensions/KeyboardExtension.js'
+  import { CheckboxExtension } from '../extensions/CheckboxExtension.js'
 
   export let value = ''
   export let placeholder = ''
@@ -102,6 +103,7 @@
           dispatch('shiftselectdown')
         }
       }),
+      CheckboxExtension,
       BubbleMenu.configure({
         element: bubbleMenuElement,
         tippyOptions: {

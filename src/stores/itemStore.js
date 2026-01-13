@@ -69,14 +69,49 @@ function createItemStore() {
   const zoomedItemId = writable(null)
   const clipboardItems = writable([])
 
+  const MAX_HISTORY = 50
+  let undoStack = []
+  let redoStack = []
+  let isUndoRedo = false
+
   items.subscribe(saveToStorage)
+
+  function pushToUndo(state) {
+    if (isUndoRedo) return
+    undoStack.push(cloneTree(state))
+    if (undoStack.length > MAX_HISTORY) {
+      undoStack.shift()
+    }
+    redoStack = []
+  }
 
   function updateItems(fn) {
     items.update(root => {
+      pushToUndo(root)
       const newRoot = cloneTree(root)
       fn(newRoot)
       return newRoot
     })
+  }
+
+  function undo() {
+    if (undoStack.length === 0) return
+    const current = get(items)
+    const prev = undoStack.pop()
+    redoStack.push(cloneTree(current))
+    isUndoRedo = true
+    items.set(prev)
+    isUndoRedo = false
+  }
+
+  function redo() {
+    if (redoStack.length === 0) return
+    const current = get(items)
+    const next = redoStack.pop()
+    undoStack.push(cloneTree(current))
+    isUndoRedo = true
+    items.set(next)
+    isUndoRedo = false
   }
 
   function addItem(parentId, afterId = null) {
@@ -239,6 +274,14 @@ function createItemStore() {
     selection.set(new Set(ids))
   }
 
+  function addToSelection(id) {
+    selection.update(sel => {
+      const newSel = new Set(sel)
+      newSel.add(id)
+      return newSel
+    })
+  }
+
   function clearSelection() {
     selection.set(new Set())
   }
@@ -328,11 +371,14 @@ function createItemStore() {
     clearSearch,
     select,
     selectRange,
+    addToSelection,
     clearSelection,
     copySelected,
     paste,
     zoom,
-    zoomOut
+    zoomOut,
+    undo,
+    redo
   }
 }
 

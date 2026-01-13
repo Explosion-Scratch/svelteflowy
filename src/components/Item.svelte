@@ -292,8 +292,9 @@
   }
 
   .selected {
-    background: rgba(73, 186, 242, 0.15);
+    background: var(--accent-bg);
     border-radius: 4px;
+    transition: background var(--transition-fast);
   }
 
   .top {

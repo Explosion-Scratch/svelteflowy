@@ -86,8 +86,9 @@
     const prevItem = getItemAbove(items, id)
     
     if (prevItem) {
-      itemStore.select(prevItem.id, true)
-      itemStore.select(id, true)
+      itemStore.addToSelection(id)
+      itemStore.addToSelection(prevItem.id)
+      focusItem(prevItem.id)
     }
   }
 
@@ -97,8 +98,9 @@
     const nextItem = getItemBelow(items, id)
     
     if (nextItem) {
-      itemStore.select(nextItem.id, true)
-      itemStore.select(id, true)
+      itemStore.addToSelection(id)
+      itemStore.addToSelection(nextItem.id)
+      focusItem(nextItem.id)
     }
   }
 

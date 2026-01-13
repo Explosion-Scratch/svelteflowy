@@ -2,6 +2,7 @@
   import List from './components/List.svelte'
   import BreadCrumb from './components/BreadCrumb.svelte'
   import SearchBar from './components/SearchBar.svelte'
+  import { copyToClipboard } from './utils/clipboard.js'
   import { itemStore } from './stores/itemStore.js'
   import { flattenVisibleTree } from './utils/tree.js'
   import { focusItem, flattenVisible } from './utils/focus.js'
@@ -16,9 +17,12 @@
   let selectionBox = null
   let containerRef
 
-  function handleCopyJson() {
-    const data = JSON.stringify($items, null, 2)
-    navigator.clipboard.writeText(data)
+  async function handleCopy() {
+    if ($selection.size > 0) {
+      await itemStore.copySelected()
+    } else {
+      await copyToClipboard($items.children || [])
+    }
   }
 
   function handleGlobalKeyDown(event) {
@@ -52,6 +56,16 @@
       itemStore.clearSelection()
       itemStore.clearSearch()
       selectionBox = null
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
+      if (event.shiftKey) {
+        event.preventDefault()
+        itemStore.redo()
+      } else {
+        event.preventDefault()
+        itemStore.undo()
+      }
     }
   }
 
@@ -91,26 +105,10 @@
       return
     }
 
-    const itemId = getItemIdFromElement(event.target)
-    
-    if (itemId) {
-      if (event.shiftKey || event.metaKey || event.ctrlKey) {
-        itemStore.select(itemId, true)
-      } else {
-        itemStore.clearSelection()
-        itemStore.select(itemId, false)
-      }
-      return
-    }
-
     isDragging = true
     dragStartX = event.clientX
     dragStartY = event.clientY
     selectionBox = null
-    
-    if (!event.shiftKey && !event.metaKey && !event.ctrlKey) {
-      itemStore.clearSelection()
-    }
   }
 
   function handleMouseMove(event) {
@@ -143,12 +141,37 @@
     }
   }
 
-  function handleMouseUp() {
+  function handleMouseUp(event) {
+    const wasDragging = isDragging
+    const hadDragBox = selectionBox !== null
+    
     isDragging = false
     selectionBox = null
-    document.querySelectorAll('.item.drag-selecting').forEach(el => {
-      el.classList.remove('drag-selecting')
+    
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.item.drag-selecting').forEach(el => {
+        el.classList.remove('drag-selecting')
+      })
     })
+    
+    if (wasDragging && !hadDragBox) {
+      if (event.target.closest('[contenteditable]') || event.target.closest('button')) {
+        return
+      }
+      
+      const itemId = getItemIdFromElement(event.target)
+      
+      if (itemId) {
+        if (event.shiftKey || event.metaKey || event.ctrlKey) {
+          itemStore.select(itemId, true)
+        } else {
+          itemStore.clearSelection()
+          itemStore.select(itemId, false)
+        }
+      } else {
+        itemStore.clearSelection()
+      }
+    }
   }
 
   function handleContainerClick(event) {
@@ -159,6 +182,7 @@
         event.target.closest('.empty-area')) {
       return
     }
+    itemStore.clearSelection()
   }
 </script>
 
@@ -174,7 +198,7 @@
   <div class="header-right">
     <SearchBar />
 
-    <button class="copy-btn" on:click={handleCopyJson} title="Copy as JSON" aria-label="Copy as JSON">
+    <button class="copy-btn" on:click={handleCopy} title="Copy as Markdown" aria-label="Copy as Markdown">
       <svg width="20" height="20" viewBox="0 0 256 256">
         <path
           fill="currentColor"
@@ -211,6 +235,37 @@
 <style>
   :root {
     --accent: #49baf2;
+    --accent-bg: rgba(73, 186, 242, 0.15);
+    --accent-border: rgba(73, 186, 242, 0.5);
+    --transition-fast: 60ms ease-out;
+    --transition-normal: 120ms ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @keyframes shrinkOut {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.95); }
+  }
+
+  :global(.animate-fade-in) {
+    animation: fadeIn var(--transition-fast) both;
+  }
+
+  :global(.animate-fade-out) {
+    animation: fadeOut var(--transition-fast) both;
+  }
+
+  :global(.animate-shrink-out) {
+    animation: shrinkOut var(--transition-fast) both;
   }
 
   :global(body) {
@@ -280,10 +335,11 @@
 
   .selection-box {
     position: fixed;
-    background: rgba(73, 186, 242, 0.1);
-    border: 1px solid rgba(73, 186, 242, 0.5);
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-border);
     pointer-events: none;
     z-index: 1000;
+    transition: opacity var(--transition-fast);
   }
 
   :global(::-webkit-scrollbar-thumb) {
@@ -296,7 +352,8 @@
   }
 
   :global(.item.drag-selecting) {
-    background: rgba(73, 186, 242, 0.15);
+    background: var(--accent-bg);
     border-radius: 4px;
+    transition: background var(--transition-fast);
   }
 </style>
