@@ -10,6 +10,11 @@
   import { HighlightSearchExtension } from '../extensions/HighlightSearchExtension.js'
   import { KeyboardExtension } from '../extensions/KeyboardExtension.js'
   import { CheckboxExtension } from '../extensions/CheckboxExtension.js'
+  import { AutocompleteExtension } from '../extensions/AutocompleteExtension.js'
+  import AutocompleteMenu from './AutocompleteMenu.svelte'
+  import LinkModal from './LinkModal.svelte'
+  import { allHashtags } from '../stores/hashtagStore.js'
+  import '@phosphor-icons/web/duotone'
 
   export let value = ''
   export let placeholder = ''
@@ -24,8 +29,43 @@
   let bubbleMenuElement
   let editor
 
+  let showLinkModal = false
+  let selectedTextForLink = ''
+
+  let autocompleteVisible = false
+  let autocompleteCoords = { top: 0, left: 0, bottom: 0 }
+  let autocompleteQuery = ''
+  let autocompleteFrom = 0
+  let autocompleteTo = 0
+
   function handleHashtagClick(hashtag) {
     dispatch('hashtagclick', { hashtag })
+  }
+
+  function handleAutocomplete(data) {
+    autocompleteVisible = true
+    autocompleteCoords = data.coords
+    autocompleteQuery = data.query
+    autocompleteFrom = data.from
+    autocompleteTo = data.to
+  }
+
+  function handleAutocompleteHide() {
+    autocompleteVisible = false
+    autocompleteQuery = ''
+  }
+
+  function handleAutocompleteSelect(event) {
+    const { item } = event.detail
+    if (editor && autocompleteVisible) {
+      editor.chain()
+        .focus()
+        .deleteRange({ from: autocompleteFrom, to: autocompleteTo })
+        .insertContent(item + ' ')
+        .run()
+    }
+    autocompleteVisible = false
+    autocompleteQuery = ''
   }
 
   onMount(() => {
@@ -104,6 +144,13 @@
         }
       }),
       CheckboxExtension,
+      AutocompleteExtension.configure({
+        triggers: [
+          { char: '#', pattern: /#([\w-]*)$/ }
+        ],
+        onTrigger: handleAutocomplete,
+        onHide: handleAutocompleteHide
+      }),
       BubbleMenu.configure({
         element: bubbleMenuElement,
         tippyOptions: {
@@ -189,6 +236,18 @@
     editor?.chain().focus().toggleStrike().run()
   }
 
+  function openLinkModal() {
+    const { from, to } = editor.state.selection
+    selectedTextForLink = editor.state.doc.textBetween(from, to, ' ')
+    showLinkModal = true
+  }
+
+  function handleLinkSubmit(event) {
+    const { markdown } = event.detail
+    editor?.chain().focus().deleteSelection().insertContent(markdown).run()
+    showLinkModal = false
+  }
+
   export function focus() {
     editor?.commands.focus('end')
   }
@@ -213,25 +272,17 @@
       type="button"
       class:active={editor?.isActive('bold')}
       on:click={toggleBold}
-      title="Bold (Ctrl+B)"
+      title="Bold"
     >
-      <strong>B</strong>
+      <i class="ph-duotone ph-text-b"></i>
     </button>
     <button
       type="button"
       class:active={editor?.isActive('italic')}
       on:click={toggleItalic}
-      title="Italic (Ctrl+I)"
+      title="Italic"
     >
-      <em>I</em>
-    </button>
-    <button
-      type="button"
-      class:active={editor?.isActive('code')}
-      on:click={toggleCode}
-      title="Code"
-    >
-      <code>&lt;/&gt;</code>
+      <i class="ph-duotone ph-text-italic"></i>
     </button>
     <button
       type="button"
@@ -239,9 +290,42 @@
       on:click={toggleStrike}
       title="Strikethrough"
     >
-      <s>S</s>
+      <i class="ph-duotone ph-text-strikethrough"></i>
+    </button>
+    <button
+      type="button"
+      class:active={editor?.isActive('code')}
+      on:click={toggleCode}
+      title="Code"
+    >
+      <i class="ph-duotone ph-code"></i>
+    </button>
+    <div class="divider"></div>
+    <button
+      type="button"
+      class:active={editor?.isActive('link')}
+      on:click={openLinkModal}
+      title="Add Link"
+    >
+      <i class="ph-duotone ph-link"></i>
     </button>
   </div>
+
+  <AutocompleteMenu
+    visible={autocompleteVisible}
+    items={$allHashtags}
+    query={autocompleteQuery}
+    coords={autocompleteCoords}
+    on:select={handleAutocompleteSelect}
+    on:close={handleAutocompleteHide}
+  />
+
+  <LinkModal
+    visible={showLinkModal}
+    selectedText={selectedTextForLink}
+    on:submit={handleLinkSubmit}
+    on:close={() => showLinkModal = false}
+  />
 </div>
 
 <style>
@@ -278,30 +362,32 @@
 
   .bubble-menu {
     display: flex;
+    align-items: center;
     gap: 2px;
-    padding: 4px;
+    padding: 4px 6px;
     background: white;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     visibility: hidden;
   }
 
   .bubble-menu button {
     all: unset;
-    padding: 4px 8px;
+    padding: 6px;
     cursor: pointer;
-    border-radius: 4px;
-    font-size: 14px;
+    border-radius: 6px;
+    font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
-    height: 28px;
+    color: #666;
+    transition: all 0.15s ease;
   }
 
   .bubble-menu button:hover {
-    background: #f0f0f0;
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
   }
 
   .bubble-menu button.active {
@@ -309,9 +395,11 @@
     color: white;
   }
 
-  .bubble-menu code {
-    font-family: monospace;
-    font-size: 12px;
+  .bubble-menu .divider {
+    width: 1px;
+    height: 16px;
+    background: rgba(0, 0, 0, 0.1);
+    margin: 0 4px;
   }
 
   :global(.hashtag) {
