@@ -153,6 +153,14 @@
     }
     if (item.children?.length) {
       focusItem(item.children[0].id)
+    } else {
+      const newId = generateId()
+      itemStore.updateItem(item.id, {
+        children: [
+          { id: newId, text: '', description: '', completed: false, open: true, children: [] }
+        ]
+      })
+      tick().then(() => focusItem(newId))
     }
   }
 
@@ -160,6 +168,22 @@
     if (!item.description?.trim()) {
       showDescriptionEditor = false
     }
+  }
+
+  function handleTitleDescription() {
+    showDescriptionEditor = true
+    tick().then(() => {
+      requestAnimationFrame(() => {
+        if (containerElement) {
+          const el = containerElement.querySelector('.zoomed_description [contenteditable]')
+          if (el) {
+            el.focus()
+            return
+          }
+        }
+        focusDescription(item.id)
+      })
+    })
   }
 
   function handleTitleNewBullet() {
@@ -251,6 +275,7 @@
           itemId={item.id}
           on:selectdown={handleTitleSelectDown}
           on:newbullet={handleTitleNewBullet}
+          on:description={handleTitleDescription}
           on:change={() => itemStore.updateItem(item.id, { text: item.text })}
           on:hashtagclick={handleHashtagClick}
           on:itemrefclick={handleItemRefClick}
@@ -262,6 +287,7 @@
           <RichEditor
             bind:value={item.description}
             isDescription={true}
+            isZoomedRoot={true}
             showPlaceholder={false}
             {highlightPhrase}
             editorClass="editable description"

@@ -325,6 +325,98 @@ function createItemStore() {
     })
   }
 
+  function indentSelected() {
+    const sel = get(selection)
+    if (sel.size === 0) return
+    
+    const rootItems = get(items)
+    const zoomId = get(zoomedItemId)
+    const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
+    const flat = flattenVisibleTree(root)
+    
+    const idsInOrder = flat.filter(item => sel.has(item.id)).map(item => item.id)
+    
+    for (const id of idsInOrder) {
+      indentItem(id)
+    }
+  }
+
+  function outdentSelected() {
+    const sel = get(selection)
+    if (sel.size === 0) return
+    
+    const rootItems = get(items)
+    const zoomId = get(zoomedItemId)
+    const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
+    const flat = flattenVisibleTree(root)
+    
+    const idsInOrder = flat.filter(item => sel.has(item.id)).map(item => item.id)
+    
+    for (const id of [...idsInOrder].reverse()) {
+      outdentItem(id)
+    }
+  }
+
+  function moveItemUp(id) {
+    updateItems(root => {
+      const parent = findParent(root, id)
+      if (!parent?.children) return
+      
+      const idx = findItemIndex(parent, id)
+      if (idx <= 0) return
+      
+      const temp = parent.children[idx]
+      parent.children[idx] = parent.children[idx - 1]
+      parent.children[idx - 1] = temp
+    })
+  }
+
+  function moveItemDown(id) {
+    updateItems(root => {
+      const parent = findParent(root, id)
+      if (!parent?.children) return
+      
+      const idx = findItemIndex(parent, id)
+      if (idx < 0 || idx >= parent.children.length - 1) return
+      
+      const temp = parent.children[idx]
+      parent.children[idx] = parent.children[idx + 1]
+      parent.children[idx + 1] = temp
+    })
+  }
+
+  function moveSelectedUp() {
+    const sel = get(selection)
+    if (sel.size === 0) return
+    
+    const rootItems = get(items)
+    const zoomId = get(zoomedItemId)
+    const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
+    const flat = flattenVisibleTree(root)
+    
+    const idsInOrder = flat.filter(item => sel.has(item.id)).map(item => item.id)
+    
+    for (const id of idsInOrder) {
+      moveItemUp(id)
+    }
+  }
+
+  function moveSelectedDown() {
+    const sel = get(selection)
+    if (sel.size === 0) return
+    
+    const rootItems = get(items)
+    const zoomId = get(zoomedItemId)
+    const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
+    const flat = flattenVisibleTree(root)
+    
+    const idsInOrder = flat.filter(item => sel.has(item.id)).map(item => item.id)
+    
+    for (const id of [...idsInOrder].reverse()) {
+      moveItemDown(id)
+    }
+  }
+
   function setSearch(query) {
     searchQuery.set(query)
   }
@@ -594,6 +686,12 @@ function createItemStore() {
     toggleOpen,
     indentItem,
     outdentItem,
+    indentSelected,
+    outdentSelected,
+    moveItemUp,
+    moveItemDown,
+    moveSelectedUp,
+    moveSelectedDown,
     setSearch,
     clearSearch,
     select,

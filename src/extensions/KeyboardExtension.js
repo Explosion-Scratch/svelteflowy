@@ -16,13 +16,17 @@ export const KeyboardExtension = Extension.create({
       onArrowDown: null,
       onShiftArrowUp: null,
       onShiftArrowDown: null,
-      isDescription: false
+      isDescription: false,
+      isZoomedRootDescription: false
     }
   },
 
   addKeyboardShortcuts() {
     return {
       'Enter': ({ editor }) => {
+        if (this.options.isZoomedRootDescription) {
+          return false
+        }
         if (this.options.onEnter) {
           this.options.onEnter()
           return true
@@ -31,6 +35,10 @@ export const KeyboardExtension = Extension.create({
       },
 
       'Shift-Enter': ({ editor }) => {
+        if (this.options.isZoomedRootDescription && this.options.onEnter) {
+          this.options.onEnter()
+          return true
+        }
         if (this.options.onShiftEnter) {
           this.options.onShiftEnter()
           return true

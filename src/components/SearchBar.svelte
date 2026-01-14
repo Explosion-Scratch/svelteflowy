@@ -19,7 +19,25 @@
   function handleKeyDown(event) {
     if (event.key === 'Escape') {
       handleClear()
+      return
     }
+    
+    if (event.metaKey || event.ctrlKey || event.altKey) {
+      event.stopPropagation()
+      return
+    }
+    
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Tab', 'Delete', 'Backspace'].includes(event.key)) {
+      event.stopPropagation()
+    }
+  }
+
+  function handleKeyUp(event) {
+    event.stopPropagation()
+  }
+
+  function handleKeyPress(event) {
+    event.stopPropagation()
   }
 
   function handleGlobalKeyDown(event) {
@@ -49,13 +67,15 @@
     value={searchValue}
     on:input={handleInput}
     on:keydown={handleKeyDown}
+    on:keyup={handleKeyUp}
+    on:keypress={handleKeyPress}
     type="text"
     placeholder="Search... (⌘F)"
     class="search-input"
   />
 
   {#if searchValue}
-    <button class="clear-button" on:click={handleClear} type="button">
+    <button class="clear-button" on:click={handleClear} type="button" aria-label="Clear search">
       <svg width="14" height="14" viewBox="0 0 256 256">
         <path
           fill="currentColor"

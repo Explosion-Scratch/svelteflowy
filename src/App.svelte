@@ -340,6 +340,58 @@
         tick().then(() => focusItem(focusedItemId))
       }
     }
+
+    if (event.key === 'Tab' && !event.target.closest('[contenteditable]') && !event.target.closest('.search-input')) {
+      if ($selection.size > 0) {
+        event.preventDefault()
+        if (event.shiftKey) {
+          itemStore.outdentSelected()
+        } else {
+          itemStore.indentSelected()
+        }
+      }
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      event.preventDefault()
+      
+      const activeEditor = document.activeElement?.closest('[contenteditable]')
+      
+      if ($selection.size > 0) {
+        if (activeEditor) {
+          activeEditor.blur()
+        }
+        if (event.key === 'ArrowUp') {
+          itemStore.moveSelectedUp()
+        } else {
+          itemStore.moveSelectedDown()
+        }
+      } else if (activeEditor) {
+        const itemElement = activeEditor.closest('.item') || activeEditor.closest('[id^="item_"]')
+        if (itemElement) {
+          const itemId = itemElement.id.replace('item_', '')
+          if (itemId) {
+            const selection = window.getSelection()
+            const range = selection?.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null
+            
+            if (event.key === 'ArrowUp') {
+              itemStore.moveItemUp(itemId)
+            } else {
+              itemStore.moveItemDown(itemId)
+            }
+            
+            tick().then(() => {
+              activeEditor.focus()
+              if (range) {
+                const newSelection = window.getSelection()
+                newSelection.removeAllRanges()
+                newSelection.addRange(range)
+              }
+            })
+          }
+        }
+      }
+    }
   }
 
   function getItemIdFromElement(element) {

@@ -21,6 +21,7 @@
   export let value = ''
   export let placeholder = ''
   export let isDescription = false
+  export let isZoomedRoot = false
   export let highlightPhrase = null
   export let editorClass = 'editable'
   export let showPlaceholder = true
@@ -124,6 +125,7 @@
       }),
       KeyboardExtension.configure({
         isDescription,
+        isZoomedRootDescription: isZoomedRoot && isDescription,
         onEnter: () => {
           if (isDescription) {
             dispatch('exitdescription')
