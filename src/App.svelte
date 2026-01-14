@@ -4,12 +4,16 @@
   import SearchBar from './components/SearchBar.svelte'
   import { copyToClipboard } from './utils/clipboard.js'
   import { itemStore } from './stores/itemStore.js'
-  import { flattenVisibleTree } from './utils/tree.js'
+  import { dragDropStore } from './stores/dragDropStore.js'
+  import { urlStore } from './stores/urlStore.js'
+  import { flattenVisibleTree, findParent } from './utils/tree.js'
   import { focusItem, flattenVisible } from './utils/focus.js'
-  import { tick } from 'svelte'
+  import { tick, onMount } from 'svelte'
   import { generateId } from './utils/id.js'
+  import { get } from 'svelte/store'
 
   const { items, filteredItems, highlightPhrase, selection, zoomedItemId, zoomedItem } = itemStore
+  const { isDraggingItems, dropTarget } = dragDropStore
 
   let isDragging = false
   let dragStartX = 0
@@ -17,6 +21,15 @@
   let selectionBox = null
   let containerRef
   let justFinishedDragSelection = false
+
+  let isItemDragMode = false
+  let dropIndicatorY = null
+  let dropIndicatorX = null
+
+  onMount(() => {
+    urlStore.initFromUrl()
+    urlStore.setupUrlSync()
+  })
 
   async function handleCopy() {
     if ($selection.size > 0) {
@@ -48,10 +61,21 @@
       itemStore.paste($zoomedItemId)
     }
 
-    if (event.key === 'Delete' || event.key === 'Backspace') {
+    if ((event.metaKey || event.ctrlKey) && (event.key === 'Delete' || event.key === 'Backspace')) {
       if ($selection.size > 0 && !event.target.closest('[contenteditable]')) {
         event.preventDefault()
-        itemStore.deleteSelected()
+        const focusTargetId = itemStore.deleteSelectedWithFocus()
+        if (focusTargetId) {
+          tick().then(() => focusItem(focusTargetId))
+        }
+      }
+    } else if (event.key === 'Delete' || event.key === 'Backspace') {
+      if ($selection.size > 0 && !event.target.closest('[contenteditable]')) {
+        event.preventDefault()
+        const focusTargetId = itemStore.deleteSelectedWithFocus()
+        if (focusTargetId) {
+          tick().then(() => focusItem(focusTargetId))
+        }
       } else if (!event.target.closest('[contenteditable]')) {
         event.preventDefault()
         const currentRoot = $zoomedItem || $filteredItems.tree
@@ -71,6 +95,34 @@
     }
 
     if (event.key === 'Escape') {
+      if ($isDraggingItems) {
+        dragDropStore.endDrag()
+        isItemDragMode = false
+        dropIndicatorY = null
+        dropIndicatorX = null
+        return
+      }
+
+      const activeEditor = document.activeElement?.closest('[contenteditable]')
+      
+      if (activeEditor) {
+        const itemElement = activeEditor.closest('.item') || activeEditor.closest('[id^="item_"]')
+        if (itemElement) {
+          const itemId = itemElement.id.replace('item_', '')
+          if (itemId) {
+            itemStore.clearSelection()
+            itemStore.select(itemId, false)
+          }
+        }
+        activeEditor.blur()
+        return
+      }
+
+      if ($zoomedItemId) {
+        itemStore.zoomOut()
+        return
+      }
+
       itemStore.clearSelection()
       itemStore.clearSearch()
       selectionBox = null
@@ -78,6 +130,14 @@
 
     if (event.key === 'Enter' && !event.target.closest('[contenteditable]') && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
       event.preventDefault()
+      
+      if ($selection.size === 1) {
+        const selectedId = [...$selection][0]
+        itemStore.clearSelection()
+        tick().then(() => focusItem(selectedId))
+        return
+      }
+      
       const currentRoot = $zoomedItem || $filteredItems.tree
       const newId = generateId()
       const newItem = { id: newId, text: '', description: '', completed: false, open: true, children: [] }
@@ -124,17 +184,62 @@
       }
     }
 
-    if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !event.shiftKey) {
+    if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !event.shiftKey && !event.altKey) {
       if (!event.target.closest('[contenteditable]')) {
         event.preventDefault()
         const currentRoot = $zoomedItem || $filteredItems.tree
         const flat = flattenVisibleTree(currentRoot)
         if (flat.length === 0) return
 
-        if (event.key === 'ArrowUp') {
-          focusItem(flat[flat.length - 1].id)
+        if ($selection.size > 0) {
+          const selectedIds = [...$selection]
+          const currentId = selectedIds[0]
+          const currentIndex = flat.findIndex(item => item.id === currentId)
+          
+          let newIndex
+          if (event.key === 'ArrowUp') {
+            newIndex = currentIndex > 0 ? currentIndex - 1 : 0
+          } else {
+            newIndex = currentIndex < flat.length - 1 ? currentIndex + 1 : flat.length - 1
+          }
+          
+          const newItem = flat[newIndex]
+          if (newItem) {
+            itemStore.clearSelection()
+            itemStore.select(newItem.id, false)
+            itemStore.setSelectionHead(newItem.id)
+            itemStore.setSelectionAnchor(newItem.id)
+          }
         } else {
-          focusItem(flat[0].id)
+          if (event.key === 'ArrowUp') {
+            focusItem(flat[flat.length - 1].id)
+          } else {
+            focusItem(flat[0].id)
+          }
+        }
+      }
+    }
+
+    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      event.preventDefault()
+      
+      if (event.key === 'ArrowLeft') {
+        itemStore.zoomOut()
+      } else {
+        const activeEditor = document.activeElement?.closest('[contenteditable]')
+        let targetItemId = null
+        
+        if (activeEditor) {
+          const itemElement = activeEditor.closest('.item') || activeEditor.closest('[id^="item_"]')
+          if (itemElement) {
+            targetItemId = itemElement.id.replace('item_', '')
+          }
+        } else if ($selection.size > 0) {
+          targetItemId = [...$selection][0]
+        }
+        
+        if (targetItemId) {
+          itemStore.zoom(targetItemId)
         }
       }
     }
@@ -171,6 +276,73 @@
     return selectedIds
   }
 
+  function computeDropTarget(clientY) {
+    const currentRoot = $zoomedItem || $filteredItems.tree
+    const flat = flattenVisibleTree(currentRoot)
+    const draggedIds = get(dragDropStore.draggedItemIds)
+    
+    let closestDistance = Infinity
+    let closestTarget = null
+    let closestY = null
+    let closestX = null
+    
+    for (let i = 0; i <= flat.length; i++) {
+      if (i < flat.length && draggedIds.has(flat[i].id)) continue
+      if (i > 0 && draggedIds.has(flat[i - 1].id)) continue
+      
+      let targetY
+      let targetX = 0
+      let insertBeforeId = null
+      let parentId = currentRoot.id
+      
+      if (i === 0) {
+        const firstEl = document.querySelector(`#item_${flat[0]?.id}`)
+        if (firstEl) {
+          const rect = firstEl.getBoundingClientRect()
+          targetY = rect.top
+          targetX = rect.left
+          insertBeforeId = flat[0]?.id
+          const parent = findParent(get(items), flat[0]?.id)
+          parentId = parent?.id || currentRoot.id
+        }
+      } else if (i === flat.length) {
+        const lastEl = document.querySelector(`#item_${flat[i - 1]?.id}`)
+        if (lastEl) {
+          const rect = lastEl.getBoundingClientRect()
+          targetY = rect.bottom
+          targetX = rect.left
+          insertBeforeId = null
+          const parent = findParent(get(items), flat[i - 1]?.id)
+          parentId = parent?.id || currentRoot.id
+        }
+      } else {
+        const prevEl = document.querySelector(`#item_${flat[i - 1]?.id}`)
+        const currEl = document.querySelector(`#item_${flat[i]?.id}`)
+        if (prevEl && currEl) {
+          const prevRect = prevEl.getBoundingClientRect()
+          const currRect = currEl.getBoundingClientRect()
+          targetY = (prevRect.bottom + currRect.top) / 2
+          targetX = currRect.left
+          insertBeforeId = flat[i]?.id
+          const parent = findParent(get(items), flat[i]?.id)
+          parentId = parent?.id || currentRoot.id
+        }
+      }
+      
+      if (targetY !== undefined) {
+        const distance = Math.abs(clientY - targetY)
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestTarget = { parentId, insertBeforeId }
+          closestY = targetY
+          closestX = targetX
+        }
+      }
+    }
+    
+    return { target: closestTarget, y: closestY, x: closestX }
+  }
+
   let potentialDragStart = null
 
   function handleMouseDown(event) {
@@ -178,8 +350,17 @@
       return
     }
 
-    potentialDragStart = { x: event.clientX, y: event.clientY, fromEditor: !!event.target.closest('[contenteditable]') }
+    const clickedItemId = getItemIdFromElement(event.target)
+    const isClickOnSelectedItem = clickedItemId && $selection.has(clickedItemId)
+    
+    potentialDragStart = { 
+      x: event.clientX, 
+      y: event.clientY, 
+      fromEditor: !!event.target.closest('[contenteditable]'),
+      itemDrag: isClickOnSelectedItem && $selection.size > 0
+    }
     isDragging = false
+    isItemDragMode = false
     selectionBox = null
   }
 
@@ -192,18 +373,39 @@
     const dy = currentY - potentialDragStart.y
     const distance = Math.sqrt(dx * dx + dy * dy)
     
-    if (!isDragging && distance > 5) {
-      isDragging = true
-      dragStartX = potentialDragStart.x
-      dragStartY = potentialDragStart.y
-      
-      if (potentialDragStart.fromEditor) {
+    if (!isDragging && !isItemDragMode && distance > 5) {
+      if (potentialDragStart.itemDrag) {
+        isItemDragMode = true
+        dragDropStore.startDrag([...$selection])
+        
         const activeEl = document.activeElement
         if (activeEl && activeEl.closest('[contenteditable]')) {
           activeEl.blur()
         }
         window.getSelection()?.removeAllRanges()
+      } else {
+        isDragging = true
+        dragStartX = potentialDragStart.x
+        dragStartY = potentialDragStart.y
+        
+        if (potentialDragStart.fromEditor) {
+          const activeEl = document.activeElement
+          if (activeEl && activeEl.closest('[contenteditable]')) {
+            activeEl.blur()
+          }
+          window.getSelection()?.removeAllRanges()
+        }
       }
+    }
+
+    if (isItemDragMode) {
+      const { target, y, x } = computeDropTarget(currentY)
+      if (target) {
+        dragDropStore.updateDropTarget(target)
+        dropIndicatorY = y
+        dropIndicatorX = x
+      }
+      return
     }
 
     if (!isDragging) return
@@ -231,12 +433,23 @@
   }
 
   function handleMouseUp(event) {
+    const wasItemDragging = isItemDragMode
     const wasDragging = isDragging
     const hadDragBox = selectionBox !== null
+    const currentDropTarget = get(dropTarget)
+    
+    if (wasItemDragging && currentDropTarget) {
+      const draggedIds = [...get(dragDropStore.draggedItemIds)]
+      itemStore.moveItems(draggedIds, currentDropTarget.parentId, currentDropTarget.insertBeforeId)
+    }
     
     isDragging = false
+    isItemDragMode = false
     selectionBox = null
     potentialDragStart = null
+    dropIndicatorY = null
+    dropIndicatorX = null
+    dragDropStore.endDrag()
     
     if (hadDragBox) {
       justFinishedDragSelection = true
@@ -335,6 +548,13 @@
   <div 
     class="selection-box"
     style="left: {selectionBox.left}px; top: {selectionBox.top}px; width: {selectionBox.width}px; height: {selectionBox.height}px;"
+  ></div>
+{/if}
+
+{#if dropIndicatorY !== null}
+  <div 
+    class="drop-indicator"
+    style="top: {dropIndicatorY}px; left: {dropIndicatorX || 0}px;"
   ></div>
 {/if}
 
@@ -471,5 +691,25 @@
     background: var(--accent-bg);
     border-radius: 4px;
     transition: background var(--transition-fast);
+  }
+
+  :global(body.dragging-items) {
+    user-select: none !important;
+    cursor: grabbing !important;
+  }
+
+  :global(body.dragging-items *) {
+    user-select: none !important;
+  }
+
+  .drop-indicator {
+    position: fixed;
+    height: 2px;
+    background: var(--accent);
+    pointer-events: none;
+    z-index: 1001;
+    width: 300px;
+    border-radius: 1px;
+    box-shadow: 0 0 4px var(--accent-border);
   }
 </style>

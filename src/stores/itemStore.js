@@ -171,6 +171,81 @@ function createItemStore() {
     selection.set(new Set())
   }
 
+  function deleteSelectedWithFocus() {
+    const sel = get(selection)
+    if (sel.size === 0) return null
+
+    const rootItems = get(items)
+    const zoomId = get(zoomedItemId)
+    const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
+    const flat = flattenVisibleTree(root)
+
+    const selectedIndices = flat
+      .map((item, idx) => sel.has(item.id) ? idx : -1)
+      .filter(idx => idx !== -1)
+      .sort((a, b) => a - b)
+
+    if (selectedIndices.length === 0) return null
+
+    const firstSelectedIdx = selectedIndices[0]
+    const lastSelectedIdx = selectedIndices[selectedIndices.length - 1]
+
+    let focusTargetId = null
+    if (firstSelectedIdx > 0) {
+      focusTargetId = flat[firstSelectedIdx - 1].id
+    } else if (lastSelectedIdx < flat.length - 1) {
+      for (let i = lastSelectedIdx + 1; i < flat.length; i++) {
+        if (!sel.has(flat[i].id)) {
+          focusTargetId = flat[i].id
+          break
+        }
+      }
+    }
+
+    deleteSelected()
+    return focusTargetId
+  }
+
+  function moveItems(itemIds, targetParentId, insertBeforeId) {
+    if (itemIds.length === 0) return
+
+    updateItems(root => {
+      const itemsToMove = []
+      
+      function collectAndRemove(node) {
+        if (!node.children) return
+        const removed = []
+        node.children = node.children.filter(child => {
+          if (itemIds.includes(child.id)) {
+            removed.push(child)
+            return false
+          }
+          return true
+        })
+        itemsToMove.push(...removed)
+        node.children.forEach(collectAndRemove)
+      }
+      collectAndRemove(root)
+
+      const targetParent = targetParentId ? findItem(root, targetParentId) : root
+      if (!targetParent) return
+      if (!targetParent.children) targetParent.children = []
+
+      if (insertBeforeId) {
+        const insertIdx = targetParent.children.findIndex(c => c.id === insertBeforeId)
+        if (insertIdx >= 0) {
+          targetParent.children.splice(insertIdx, 0, ...itemsToMove)
+        } else {
+          targetParent.children.push(...itemsToMove)
+        }
+      } else {
+        targetParent.children.push(...itemsToMove)
+      }
+    })
+
+    selection.set(new Set())
+  }
+
   function completeSelected() {
     const sel = get(selection)
     if (sel.size === 0) return
@@ -506,6 +581,8 @@ function createItemStore() {
     addItem,
     deleteItem,
     deleteSelected,
+    deleteSelectedWithFocus,
+    moveItems,
     completeSelected,
     updateItem,
     toggleComplete,
