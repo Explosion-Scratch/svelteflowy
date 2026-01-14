@@ -11,9 +11,19 @@
   let selectedIndex = 0
   let menuElement
 
-  $: filteredItems = items.filter(item => 
-    item.toLowerCase().includes(query.toLowerCase())
-  )
+  function getItemText(item) {
+    return typeof item === 'object' ? item.text : item
+  }
+
+  function truncateText(text, maxLen = 50) {
+    if (!text) return ''
+    return text.length > maxLen ? text.slice(0, maxLen) + '…' : text
+  }
+
+  $: filteredItems = items.filter(item => {
+    const text = getItemText(item)
+    return text?.toLowerCase().includes(query.toLowerCase())
+  })
 
   $: if (filteredItems.length > 0 && selectedIndex >= filteredItems.length) {
     selectedIndex = filteredItems.length - 1
@@ -70,7 +80,7 @@
         on:click={() => selectItem(item)}
         on:mouseenter={() => selectedIndex = index}
       >
-        <span class="item-text">{item}</span>
+        {truncateText(getItemText(item))}
       </button>
     {/each}
   </div>
@@ -81,35 +91,34 @@
     position: fixed;
     z-index: 1000;
     background: white;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    min-width: 160px;
-    max-width: 280px;
-    max-height: 200px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    min-width: 140px;
+    max-width: 260px;
+    max-height: 180px;
     overflow-y: auto;
-    padding: 4px;
+    padding: 3px;
   }
 
   .autocomplete-item {
     all: unset;
-    display: flex;
-    align-items: center;
+    display: block;
     width: 100%;
-    padding: 8px 12px;
+    padding: 6px 10px;
     cursor: pointer;
-    border-radius: 6px;
-    font-size: 14px;
-    color: #333;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #555;
     box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .autocomplete-item:hover,
   .autocomplete-item.selected {
-    background: rgba(73, 186, 242, 0.1);
-  }
-
-  .item-text {
-    color: var(--accent, #49baf2);
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
   }
 </style>

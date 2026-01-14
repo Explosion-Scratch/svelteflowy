@@ -104,6 +104,40 @@
         itemStore.undo()
       }
     }
+
+    if (event.shiftKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      if (!event.target.closest('[contenteditable]')) {
+        event.preventDefault()
+        const currentRoot = $zoomedItem || $filteredItems.tree
+        const flat = flattenVisibleTree(currentRoot)
+        if (flat.length === 0) return
+
+        if ($selection.size === 0) {
+          const targetItem = event.key === 'ArrowUp' ? flat[flat.length - 1] : flat[0]
+          itemStore.selectRange([targetItem.id])
+          itemStore.setSelectionHead(targetItem.id)
+          itemStore.setSelectionAnchor(targetItem.id)
+        } else {
+          const direction = event.key === 'ArrowUp' ? 'up' : 'down'
+          itemStore.extendSelection(direction)
+        }
+      }
+    }
+
+    if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !event.shiftKey) {
+      if (!event.target.closest('[contenteditable]')) {
+        event.preventDefault()
+        const currentRoot = $zoomedItem || $filteredItems.tree
+        const flat = flattenVisibleTree(currentRoot)
+        if (flat.length === 0) return
+
+        if (event.key === 'ArrowUp') {
+          focusItem(flat[flat.length - 1].id)
+        } else {
+          focusItem(flat[0].id)
+        }
+      }
+    }
   }
 
   function getItemIdFromElement(element) {
@@ -338,6 +372,16 @@
 
   :global(.animate-shrink-out) {
     animation: shrinkOut var(--transition-fast) both;
+  }
+
+  @keyframes highlightPulse {
+    0%, 100% { background: transparent; }
+    30% { background: rgba(139, 92, 246, 0.25); }
+  }
+
+  :global(.highlight-pulse) {
+    animation: highlightPulse 1.5s ease-out;
+    border-radius: 4px;
   }
 
   :global(body) {

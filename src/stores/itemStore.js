@@ -2,6 +2,7 @@ import { writable, derived, get } from 'svelte/store'
 import { generateId } from '../utils/id.js'
 import { findItem, findParent, findItemIndex, filterTree, cloneTree } from '../utils/tree.js'
 import { copyToClipboard, pasteFromClipboard } from '../utils/clipboard.js'
+import { flattenVisibleTree } from '../utils/tree.js'
 
 const STORAGE_KEY = 'svelteflowy-items'
 
@@ -68,6 +69,7 @@ function createItemStore() {
   const selection = writable(new Set())
   const selectionAnchor = writable(null)
   const selectionDirection = writable(null)
+  const selectionHead = writable(null)
   const zoomedItemId = writable(null)
   const clipboardItems = writable([])
 
@@ -299,7 +301,114 @@ function createItemStore() {
   function clearSelection() {
     selection.set(new Set())
     selectionAnchor.set(null)
+    selectionHead.set(null)
     selectionDirection.set(null)
+  }
+
+  function extendSelection(direction) {
+    let currentHead = get(selectionHead)
+    console.log('[extendSelection] direction:', direction, 'currentHead:', currentHead)
+    
+    if (!currentHead) {
+      const activeEl = document.activeElement
+      const itemEl = activeEl?.closest?.('.item')
+      if (itemEl) {
+        currentHead = itemEl.id.replace('item_', '')
+        console.log('[extendSelection] Detected head from DOM:', currentHead)
+        selectionHead.set(currentHead)
+      }
+    }
+    
+    if (!currentHead) {
+      const sel = get(selection)
+      if (sel.size > 0) {
+        const rootItems = get(items)
+        const zoomId = get(zoomedItemId)
+        const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
+        const flat = flattenVisibleTree(root)
+        const selectedInOrder = flat.filter(item => sel.has(item.id))
+        if (selectedInOrder.length > 0) {
+          currentHead = direction === 'up' 
+            ? selectedInOrder[0].id 
+            : selectedInOrder[selectedInOrder.length - 1].id
+          console.log('[extendSelection] Derived head from selection:', currentHead)
+          selectionHead.set(currentHead)
+          selectionAnchor.set(direction === 'up' 
+            ? selectedInOrder[selectedInOrder.length - 1].id 
+            : selectedInOrder[0].id)
+          selectionDirection.set(direction)
+        }
+      }
+    }
+    
+    if (!currentHead) {
+      console.log('[extendSelection] No currentHead, returning early')
+      return
+    }
+
+    const rootItems = get(items)
+    const zoomId = get(zoomedItemId)
+    const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
+    const flat = flattenVisibleTree(root)
+    const idx = flat.findIndex(item => item.id === currentHead)
+    console.log('[extendSelection] flat items:', flat.map(i => i.id), 'idx:', idx)
+    if (idx === -1) {
+      console.log('[extendSelection] currentHead not found in flat list')
+      return
+    }
+
+    let nextItem
+    if (direction === 'up' && idx > 0) {
+      nextItem = flat[idx - 1]
+    } else if (direction === 'down' && idx < flat.length - 1) {
+      nextItem = flat[idx + 1]
+    }
+    console.log('[extendSelection] nextItem:', nextItem?.id)
+    if (!nextItem) {
+      console.log('[extendSelection] No nextItem, returning')
+      return
+    }
+
+    const anchor = get(selectionAnchor)
+    const currentDirection = get(selectionDirection)
+
+    if (currentDirection && direction !== currentDirection && currentHead !== anchor) {
+      selection.update(s => {
+        const newSel = new Set(s)
+        newSel.delete(currentHead)
+        return newSel
+      })
+      if (get(selection).size <= 1) {
+        selectionDirection.set(null)
+      }
+    } else {
+      if (!anchor) {
+        selectionAnchor.set(currentHead)
+        selection.update(s => {
+          const newSel = new Set(s)
+          newSel.add(currentHead)
+          newSel.add(nextItem.id)
+          return newSel
+        })
+        selectionDirection.set(direction)
+      } else {
+        selection.update(s => {
+          const newSel = new Set(s)
+          newSel.add(nextItem.id)
+          return newSel
+        })
+        if (!currentDirection) {
+          selectionDirection.set(direction)
+        }
+      }
+    }
+
+    selectionHead.set(nextItem.id)
+  }
+
+  function setSelectionHead(id) {
+    console.log('[setSelectionHead] setting to:', id)
+    selectionHead.set(id)
   }
 
   function setSelectionDirection(direction) {
@@ -351,6 +460,19 @@ function createItemStore() {
     zoomedItemId.set(parent?.id || null)
   }
 
+  async function navigateToItem(id) {
+    zoomedItemId.set(null)
+    
+    await new Promise(r => setTimeout(r, 50))
+    
+    const el = document.getElementById(`item_${id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('highlight-pulse')
+      setTimeout(() => el.classList.remove('highlight-pulse'), 1500)
+    }
+  }
+
   const zoomedItem = derived(
     [items, zoomedItemId],
     ([$items, $zoomedId]) => {
@@ -379,6 +501,7 @@ function createItemStore() {
     zoomedItem,
     filteredItems,
     highlightPhrase,
+    selectionHead,
     
     addItem,
     deleteItem,
@@ -397,11 +520,14 @@ function createItemStore() {
     removeFromSelection,
     setSelectionAnchor,
     setSelectionDirection,
+    setSelectionHead,
+    extendSelection,
     clearSelection,
     copySelected,
     paste,
     zoom,
     zoomOut,
+    navigateToItem,
     undo,
     redo
   }

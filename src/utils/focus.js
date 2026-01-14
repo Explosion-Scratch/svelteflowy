@@ -7,6 +7,7 @@ export function focusItem(id) {
   if (!id) return
 
   focusedItemId.set(id)
+  itemStore.setSelectionHead(id)
 
   requestAnimationFrame(() => {
     const el = document.querySelector(`#item_${id} .title-editor [contenteditable]`)
@@ -26,6 +27,7 @@ export function focusItemStart(id) {
   if (!id) return
 
   focusedItemId.set(id)
+  itemStore.setSelectionHead(id)
 
   requestAnimationFrame(() => {
     const el = document.querySelector(`#item_${id} .title-editor [contenteditable]`)

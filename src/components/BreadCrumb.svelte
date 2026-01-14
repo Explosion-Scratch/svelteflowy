@@ -35,6 +35,7 @@
 
   function handleHome() {
     itemStore.zoom(null)
+    itemStore.clearSearch()
   }
 
   function handleCrumbClick(item) {

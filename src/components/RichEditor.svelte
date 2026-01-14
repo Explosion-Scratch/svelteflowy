@@ -11,9 +11,11 @@
   import { KeyboardExtension } from '../extensions/KeyboardExtension.js'
   import { CheckboxExtension } from '../extensions/CheckboxExtension.js'
   import { AutocompleteExtension } from '../extensions/AutocompleteExtension.js'
+  import { ItemReferenceExtension } from '../extensions/ItemReferenceExtension.js'
   import AutocompleteMenu from './AutocompleteMenu.svelte'
   import LinkModal from './LinkModal.svelte'
   import { allHashtags } from '../stores/hashtagStore.js'
+  import { allItems } from '../stores/allItemsStore.js'
   import '@phosphor-icons/web/duotone'
 
   export let value = ''
@@ -22,6 +24,7 @@
   export let highlightPhrase = null
   export let editorClass = 'editable'
   export let showPlaceholder = true
+  export let itemId = null
 
   const dispatch = createEventDispatcher()
 
@@ -37,6 +40,7 @@
   let autocompleteQuery = ''
   let autocompleteFrom = 0
   let autocompleteTo = 0
+  let currentTrigger = null
 
   function handleHashtagClick(hashtag) {
     dispatch('hashtagclick', { hashtag })
@@ -48,24 +52,47 @@
     autocompleteQuery = data.query
     autocompleteFrom = data.from
     autocompleteTo = data.to
+    currentTrigger = data.trigger
   }
 
   function handleAutocompleteHide() {
     autocompleteVisible = false
     autocompleteQuery = ''
+    currentTrigger = null
   }
 
   function handleAutocompleteSelect(event) {
     const { item } = event.detail
     if (editor && autocompleteVisible) {
+      let insertText
+      if (currentTrigger === '@' && typeof item === 'object') {
+        insertText = `@[${item.id}] `
+      } else if (typeof item === 'object') {
+        insertText = item.text + ' '
+      } else {
+        insertText = item + ' '
+      }
       editor.chain()
         .focus()
         .deleteRange({ from: autocompleteFrom, to: autocompleteTo })
-        .insertContent(item + ' ')
+        .insertContent(insertText)
         .run()
     }
     autocompleteVisible = false
     autocompleteQuery = ''
+    currentTrigger = null
+  }
+
+  function handleItemRefClick(id) {
+    dispatch('itemrefclick', { id })
+  }
+
+  function getItemText(id) {
+    const items = $allItems
+    const found = items.find(i => i.id === id)
+    if (!found) return `@${id}`
+    const text = found.text || ''
+    return text.length > 30 ? text.slice(0, 30) + '…' : text
   }
 
   onMount(() => {
@@ -146,10 +173,15 @@
       CheckboxExtension,
       AutocompleteExtension.configure({
         triggers: [
-          { char: '#', pattern: /#([\w-]*)$/ }
+          { char: '#', pattern: /#([\w-]*)$/ },
+          { char: '@', pattern: /@([\w\s-]*)$/ }
         ],
         onTrigger: handleAutocomplete,
         onHide: handleAutocompleteHide
+      }),
+      ItemReferenceExtension.configure({
+        onItemRefClick: handleItemRefClick,
+        getItemText: getItemText
       }),
       BubbleMenu.configure({
         element: bubbleMenuElement,
@@ -313,7 +345,7 @@
 
   <AutocompleteMenu
     visible={autocompleteVisible}
-    items={$allHashtags}
+    items={currentTrigger === '@' ? $allItems.filter(i => i.id !== itemId) : $allHashtags}
     query={autocompleteQuery}
     coords={autocompleteCoords}
     on:select={handleAutocompleteSelect}
@@ -412,6 +444,25 @@
 
   :global(.hashtag:hover) {
     background: rgba(73, 186, 242, 0.2);
+  }
+
+  :global(.item-ref) {
+    cursor: pointer;
+    font-size: 0;
+  }
+
+  :global(.item-ref::after) {
+    content: attr(data-display-text);
+    font-size: 1rem;
+    color: #666;
+    background: rgba(0, 0, 0, 0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  :global(.item-ref:hover::after) {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333;
   }
 
   :global(.search-highlight) {

@@ -7,6 +7,14 @@
   import { focusItem, focusDescription, getItemAbove, getItemBelow, flattenVisible } from '../utils/focus.js'
   import { get } from 'svelte/store'
 
+  function handleHashtagClick(event) {
+    itemStore.setSearch(event.detail.hashtag)
+  }
+
+  function handleItemRefClick(event) {
+    itemStore.navigateToItem(event.detail.id)
+  }
+
   export let item
   export let isTop = false
   export let outermost = false
@@ -81,61 +89,21 @@
   }
 
   function handleShiftSelectUp(event) {
-    const id = event.detail.id
-    const items = get(itemStore.items)
-    const prevItem = getItemAbove(items, id)
+    itemStore.extendSelection('up')
     
-    if (!prevItem) return
-
-    const currentAnchor = get(selectionAnchor)
-    const currentSelection = get(selection)
-    const lastDirection = get(selectionDirection)
-
-    if (currentSelection.size === 0) {
-      itemStore.setSelectionAnchor(id)
-      itemStore.addToSelection(id)
-      itemStore.addToSelection(prevItem.id)
-      itemStore.setSelectionDirection('up')
-    } else if (lastDirection === 'down' && currentAnchor && id !== currentAnchor) {
-      itemStore.removeFromSelection(id)
-      if (currentSelection.size <= 2) {
-        itemStore.setSelectionDirection(null)
-      }
-    } else {
-      itemStore.addToSelection(prevItem.id)
-      itemStore.setSelectionDirection('up')
+    const active = document.activeElement
+    if (active?.closest('[contenteditable]')) {
+      active.blur()
     }
-    
-    focusItem(prevItem.id)
   }
 
   function handleShiftSelectDown(event) {
-    const id = event.detail.id
-    const items = get(itemStore.items)
-    const nextItem = getItemBelow(items, id)
+    itemStore.extendSelection('down')
     
-    if (!nextItem) return
-
-    const currentAnchor = get(selectionAnchor)
-    const currentSelection = get(selection)
-    const lastDirection = get(selectionDirection)
-
-    if (currentSelection.size === 0) {
-      itemStore.setSelectionAnchor(id)
-      itemStore.addToSelection(id)
-      itemStore.addToSelection(nextItem.id)
-      itemStore.setSelectionDirection('down')
-    } else if (lastDirection === 'up' && currentAnchor && id !== currentAnchor) {
-      itemStore.removeFromSelection(id)
-      if (currentSelection.size <= 2) {
-        itemStore.setSelectionDirection(null)
-      }
-    } else {
-      itemStore.addToSelection(nextItem.id)
-      itemStore.setSelectionDirection('down')
+    const active = document.activeElement
+    if (active?.closest('[contenteditable]')) {
+      active.blur()
     }
-    
-    focusItem(nextItem.id)
   }
 
   function handleZoom(event) {
@@ -262,9 +230,12 @@
         bind:value={item.text}
         {highlightPhrase}
         showPlaceholder={false}
+        itemId={item.id}
         on:selectdown={handleTitleSelectDown}
         on:newbullet={handleTitleNewBullet}
         on:change={() => itemStore.updateItem(item.id, { text: item.text })}
+        on:hashtagclick={handleHashtagClick}
+        on:itemrefclick={handleItemRefClick}
       />
     </h1>
 
@@ -293,9 +264,12 @@
         bind:value={item.text}
         {highlightPhrase}
         showPlaceholder={false}
+        itemId={item.id}
         on:selectdown={handleTitleSelectDown}
         on:newbullet={handleTitleNewBullet}
         on:change={() => itemStore.updateItem(item.id, { text: item.text })}
+        on:hashtagclick={handleHashtagClick}
+        on:itemrefclick={handleItemRefClick}
       />
     </h2>
   {/if}

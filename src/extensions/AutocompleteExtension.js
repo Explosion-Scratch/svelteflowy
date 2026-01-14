@@ -17,13 +17,15 @@ export const AutocompleteExtension = Extension.create({
       isActive: false,
       currentTrigger: null,
       currentQuery: '',
-      cursorPos: null
+      cursorPos: null,
+      suppressNextTrigger: false
     }
   },
 
   addProseMirrorPlugins() {
     const { triggers, onTrigger, onHide } = this.options
     const storage = this.storage
+    const { editor } = this
 
     return [
       new Plugin({
@@ -42,6 +44,17 @@ export const AutocompleteExtension = Extension.create({
             }
             
             return false
+          },
+
+          handleClick: (view, pos, event) => {
+            const target = event.target
+            if (target.classList?.contains('hashtag') || target.classList?.contains('item-ref')) {
+              storage.suppressNextTrigger = true
+              setTimeout(() => {
+                storage.suppressNextTrigger = false
+              }, 50)
+            }
+            return false
           }
         },
 
@@ -51,6 +64,14 @@ export const AutocompleteExtension = Extension.create({
           },
           
           apply(tr, prev, oldState, newState) {
+            if (storage.suppressNextTrigger) {
+              if (storage.isActive) {
+                storage.isActive = false
+                if (onHide) onHide()
+              }
+              return { active: false, trigger: null, query: '', from: 0 }
+            }
+
             const { selection } = newState
             const { $from } = selection
             
@@ -78,7 +99,7 @@ export const AutocompleteExtension = Extension.create({
                 storage.cursorPos = $from.pos
                 
                 if (onTrigger) {
-                  const coords = view.coordsAtPos($from.pos)
+                  const coords = editor.view.coordsAtPos($from.pos)
                   onTrigger({
                     trigger: char,
                     query,

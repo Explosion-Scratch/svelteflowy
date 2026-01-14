@@ -101,6 +101,10 @@
     itemStore.setSearch(event.detail.hashtag)
   }
 
+  function handleItemRefClick(event) {
+    itemStore.navigateToItem(event.detail.id)
+  }
+
   function handleTextChange(event) {
     const newVal = hasCheckboxSyntax 
       ? (isCheckboxChecked ? '[x] ' : '[ ] ') + event.detail.value
@@ -233,6 +237,7 @@
             value={displayText}
             showPlaceholder={false}
             {highlightPhrase}
+            itemId={item.id}
             on:change={handleTextChange}
             on:delete={handleDelete}
             on:forcedelete={handleForceDelete}
@@ -246,6 +251,7 @@
             on:togglecomplete={handleToggleComplete}
             on:description={handleShowDescription}
             on:hashtagclick={handleHashtagClick}
+            on:itemrefclick={handleItemRefClick}
           />
         </div>
       </div>
@@ -263,6 +269,7 @@
             on:exitdescription={handleExitDescription}
             on:togglecomplete={handleToggleComplete}
             on:hashtagclick={handleHashtagClick}
+            on:itemrefclick={handleItemRefClick}
           />
         </div>
       {/if}
