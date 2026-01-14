@@ -532,7 +532,12 @@ function createItemStore() {
     
     const root = get(items)
     const parent = findParent(root, current)
-    zoomedItemId.set(parent?.id || null)
+    
+    if (!parent || parent.id === root.id) {
+      zoomedItemId.set(null)
+    } else {
+      zoomedItemId.set(parent.id)
+    }
   }
 
   async function navigateToItem(id) {

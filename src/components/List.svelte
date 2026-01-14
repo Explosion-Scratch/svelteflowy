@@ -27,7 +27,7 @@
   let containerElement
   let showDescriptionEditor = false
 
-  $: isZoomedRoot = isTop && $zoomedItemId && item.id === $zoomedItemId
+  $: isZoomedRoot = isTop && !!$zoomedItemId && item.id === $zoomedItemId
   $: hasDescription = !!item.description?.trim()
 
   function handleNewBullet(event) {
@@ -225,53 +225,57 @@
   class:outermost
 >
   {#if isZoomedRoot}
-    <h1 class="zoomed_title" id="item_{item.id}">
-      <RichEditor
-        bind:value={item.text}
-        {highlightPhrase}
-        showPlaceholder={false}
-        itemId={item.id}
-        on:selectdown={handleTitleSelectDown}
-        on:newbullet={handleTitleNewBullet}
-        on:change={() => itemStore.updateItem(item.id, { text: item.text })}
-        on:hashtagclick={handleHashtagClick}
-        on:itemrefclick={handleItemRefClick}
-      />
-    </h1>
-
-    {#if hasDescription || showDescriptionEditor}
-      <div class="zoomed_description">
+    {#key item.id}
+      <h1 class="zoomed_title" id="item_{item.id}">
         <RichEditor
-          bind:value={item.description}
-          isDescription={true}
-          showPlaceholder={false}
+          bind:value={item.text}
           {highlightPhrase}
-          editorClass="editable description"
-          on:change={handleDescriptionChange}
-          on:delete={handleExitDescription}
-          on:exitdescription={handleExitDescription}
-          on:blur={handleDescriptionBlur}
+          showPlaceholder={false}
+          itemId={item.id}
+          on:selectdown={handleTitleSelectDown}
+          on:newbullet={handleTitleNewBullet}
+          on:change={() => itemStore.updateItem(item.id, { text: item.text })}
+          on:hashtagclick={handleHashtagClick}
+          on:itemrefclick={handleItemRefClick}
         />
-      </div>
-    {:else}
-      <button class="add-description-btn" on:click={handleDescriptionClick}>
-        Click to add description...
-      </button>
-    {/if}
+      </h1>
+
+      {#if hasDescription || showDescriptionEditor}
+        <div class="zoomed_description">
+          <RichEditor
+            bind:value={item.description}
+            isDescription={true}
+            showPlaceholder={false}
+            {highlightPhrase}
+            editorClass="editable description"
+            on:change={handleDescriptionChange}
+            on:delete={handleExitDescription}
+            on:exitdescription={handleExitDescription}
+            on:blur={handleDescriptionBlur}
+          />
+        </div>
+      {:else}
+        <button class="add-description-btn" on:click={handleDescriptionClick}>
+          Click to add description...
+        </button>
+      {/if}
+    {/key}
   {:else if isTop && item.text?.length && !outermost}
-    <h2 class="item_title" id="item_{item.id}">
-      <RichEditor
-        bind:value={item.text}
-        {highlightPhrase}
-        showPlaceholder={false}
-        itemId={item.id}
-        on:selectdown={handleTitleSelectDown}
-        on:newbullet={handleTitleNewBullet}
-        on:change={() => itemStore.updateItem(item.id, { text: item.text })}
-        on:hashtagclick={handleHashtagClick}
-        on:itemrefclick={handleItemRefClick}
-      />
-    </h2>
+    {#key item.id}
+      <h2 class="item_title" id="item_{item.id}">
+        <RichEditor
+          bind:value={item.text}
+          {highlightPhrase}
+          showPlaceholder={false}
+          itemId={item.id}
+          on:selectdown={handleTitleSelectDown}
+          on:newbullet={handleTitleNewBullet}
+          on:change={() => itemStore.updateItem(item.id, { text: item.text })}
+          on:hashtagclick={handleHashtagClick}
+          on:itemrefclick={handleItemRefClick}
+        />
+      </h2>
+    {/key}
   {/if}
 
   {#if item.children?.length && (item.open || isTop)}

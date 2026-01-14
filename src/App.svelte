@@ -61,6 +61,20 @@
       itemStore.paste($zoomedItemId)
     }
 
+    if ((event.metaKey || event.ctrlKey) && event.key === 'a') {
+      if (!event.target.closest('[contenteditable]')) {
+        event.preventDefault()
+        const currentRoot = $zoomedItem || $filteredItems.tree
+        const flat = flattenVisibleTree(currentRoot)
+        const allIds = flat.map(item => item.id)
+        if (allIds.length > 0) {
+          itemStore.selectRange(allIds)
+          itemStore.setSelectionAnchor(allIds[0])
+          itemStore.setSelectionHead(allIds[allIds.length - 1])
+        }
+      }
+    }
+
     if ((event.metaKey || event.ctrlKey) && (event.key === 'Delete' || event.key === 'Backspace')) {
       if ($selection.size > 0 && !event.target.closest('[contenteditable]')) {
         event.preventDefault()
@@ -118,12 +132,18 @@
         return
       }
 
-      if ($zoomedItemId) {
-        itemStore.zoomOut()
+      if ($selection.size > 0) {
+        itemStore.clearSelection()
         return
       }
 
-      itemStore.clearSelection()
+      if ($zoomedItemId) {
+        const previousZoomId = $zoomedItemId
+        itemStore.zoomOut()
+        tick().then(() => focusItem(previousZoomId))
+        return
+      }
+
       itemStore.clearSearch()
       selectionBox = null
     }
@@ -223,24 +243,36 @@
     if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
       event.preventDefault()
       
+      const activeEditor = document.activeElement?.closest('[contenteditable]')
+      let focusedItemId = null
+      
+      if (activeEditor) {
+        const itemElement = activeEditor.closest('.item') || activeEditor.closest('[id^="item_"]')
+        if (itemElement) {
+          focusedItemId = itemElement.id.replace('item_', '')
+        }
+      }
+      
       if (event.key === 'ArrowLeft') {
+        const previousZoomId = $zoomedItemId
         itemStore.zoomOut()
+        if (previousZoomId) {
+          tick().then(() => focusItem(previousZoomId))
+        }
       } else {
-        const activeEditor = document.activeElement?.closest('[contenteditable]')
-        let targetItemId = null
+        let targetItemId = focusedItemId
         
-        if (activeEditor) {
-          const itemElement = activeEditor.closest('.item') || activeEditor.closest('[id^="item_"]')
-          if (itemElement) {
-            targetItemId = itemElement.id.replace('item_', '')
-          }
-        } else if ($selection.size > 0) {
+        if (!targetItemId && $selection.size > 0) {
           targetItemId = [...$selection][0]
         }
         
         if (targetItemId) {
           itemStore.zoom(targetItemId)
         }
+      }
+      
+      if (focusedItemId) {
+        tick().then(() => focusItem(focusedItemId))
       }
     }
   }

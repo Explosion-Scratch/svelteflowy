@@ -10,7 +10,15 @@ export function focusItem(id) {
   itemStore.setSelectionHead(id)
 
   requestAnimationFrame(() => {
-    const el = document.querySelector(`#item_${id} .title-editor [contenteditable]`)
+    let el = document.querySelector(`#item_${id} .title-editor [contenteditable]`)
+    
+    if (!el) {
+      el = document.querySelector(`#item_${id}[contenteditable]`)
+    }
+    if (!el) {
+      el = document.querySelector(`#item_${id} [contenteditable]`)
+    }
+    
     if (el) {
       el.focus()
       const range = document.createRange()
@@ -30,7 +38,15 @@ export function focusItemStart(id) {
   itemStore.setSelectionHead(id)
 
   requestAnimationFrame(() => {
-    const el = document.querySelector(`#item_${id} .title-editor [contenteditable]`)
+    let el = document.querySelector(`#item_${id} .title-editor [contenteditable]`)
+    
+    if (!el) {
+      el = document.querySelector(`#item_${id}[contenteditable]`)
+    }
+    if (!el) {
+      el = document.querySelector(`#item_${id} [contenteditable]`)
+    }
+    
     if (el) {
       el.focus()
       const range = document.createRange()
