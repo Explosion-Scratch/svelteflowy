@@ -4,7 +4,13 @@
   const dispatch = createEventDispatcher()
 </script>
 
-<button class="checkbox" class:checked on:click|stopPropagation={(e) => dispatch('click', e)}>
+<button 
+  class="checkbox" 
+  class:checked 
+  on:click|stopPropagation={(e) => dispatch('click', e)}
+  aria-label={checked ? "Mark as incomplete" : "Mark as complete"}
+  title={checked ? "Mark as incomplete" : "Mark as complete"}
+>
   <svg class="completed_check" width="32" height="32" viewBox="0 0 24 24">
     <path
       fill="currentColor"
@@ -25,6 +31,16 @@
     display: inline-block;
     cursor: pointer;
     margin-right: 6px;
+    color: #ccc;
+    transition: color 0.2s ease;
+  }
+
+  .checkbox:hover {
+    color: #999;
+  }
+
+  .checkbox.checked {
+    color: #999;
   }
 
   .completed_check {

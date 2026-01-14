@@ -2,14 +2,17 @@
   import List from './components/List.svelte'
   import BreadCrumb from './components/BreadCrumb.svelte'
   import SearchBar from './components/SearchBar.svelte'
+  import SaveIndicator from './components/SaveIndicator.svelte'
   import { copyToClipboard } from './utils/clipboard.js'
   import { itemStore } from './stores/itemStore.js'
   import { dragDropStore } from './stores/dragDropStore.js'
   import { urlStore } from './stores/urlStore.js'
+  import { fileService } from './services/fileService.js'
   import { flattenVisibleTree, findParent } from './utils/tree.js'
   import { focusItem, flattenVisible } from './utils/focus.js'
   import { tick, onMount } from 'svelte'
   import { generateId } from './utils/id.js'
+  import { debounce } from './utils/debounce.js'
   import { get } from 'svelte/store'
 
   const { items, filteredItems, highlightPhrase, selection, zoomedItemId, zoomedItem } = itemStore
@@ -26,10 +29,60 @@
   let dropIndicatorY = null
   let dropIndicatorX = null
 
-  onMount(() => {
+  onMount(async () => {
     urlStore.initFromUrl()
     urlStore.setupUrlSync()
+    
+    if (fileService.isFileSystemAccessSupported()) {
+      await fileService.initFromStoredHandle()
+    }
   })
+
+  let isInitialLoad = true
+  
+  const debouncedSave = debounce(async () => {
+    const handle = get(fileService.fileHandle)
+    if (handle) {
+      await handleSave()
+    }
+  }, 1000)
+
+  items.subscribe(() => {
+    if (isInitialLoad) {
+      isInitialLoad = false
+      return
+    }
+    fileService.markDirty()
+    debouncedSave()
+  })
+
+  async function handleSave() {
+    const rootItems = get(items)
+    const itemsArray = rootItems.children || []
+    await fileService.saveFile(itemsArray)
+  }
+
+  async function handleOpen() {
+    const { hasUnsavedChanges, saveState } = fileService
+    const hasDirtyChanges = get(hasUnsavedChanges)
+    const handle = get(fileService.fileHandle)
+    
+    if (hasDirtyChanges && handle) {
+      const rootItems = get(items)
+      const itemsArray = rootItems.children || []
+      await fileService.saveFile(itemsArray)
+    }
+    
+    const result = await fileService.openFile()
+    
+    if (result.success && result.items) {
+      const rootItems = get(items)
+      itemStore.updateItem(rootItems.id, { children: result.items })
+      fileService.hasUnsavedChanges.set(false)
+    } else if (result.error) {
+      alert(result.error)
+    }
+  }
 
   async function handleCopy() {
     if ($selection.size > 0) {
@@ -40,6 +93,18 @@
   }
 
   function handleGlobalKeyDown(event) {
+    if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+      event.preventDefault()
+      handleSave()
+      return
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === 'o') {
+      event.preventDefault()
+      handleOpen()
+      return
+    }
+
     if ((event.metaKey || event.ctrlKey) && event.key === 'c') {
       if ($selection.size > 0) {
         event.preventDefault()
@@ -546,6 +611,10 @@
 <div class="header">
   <BreadCrumb />
 
+  <div class="header-center">
+    <SaveIndicator />
+  </div>
+
   <div class="header-right">
     <SearchBar />
 
@@ -673,6 +742,15 @@
   }
 
   .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 0.5rem;
