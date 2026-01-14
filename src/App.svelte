@@ -122,8 +122,12 @@
     }
 
     if ((event.metaKey || event.ctrlKey) && event.key === 'v') {
-      event.preventDefault()
-      itemStore.paste($zoomedItemId)
+      const activeEditor = event.target.closest('[contenteditable]')
+      const isInDescription = activeEditor?.closest('.zoomed_description') || activeEditor?.closest('.description')
+      if (!isInDescription) {
+        event.preventDefault()
+        itemStore.paste($zoomedItemId)
+      }
     }
 
     if ((event.metaKey || event.ctrlKey) && event.key === 'a') {

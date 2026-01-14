@@ -160,6 +160,9 @@
   }
 
   function handleContextMenu(e) {
+    if (e.target.closest('.description-editor') || e.target.closest('.zoomed_description')) {
+      return
+    }
     e.preventDefault()
     e.stopPropagation()
     menuPosition = calculateMenuPosition()

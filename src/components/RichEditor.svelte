@@ -106,7 +106,7 @@
         bulletList: false,
         orderedList: false,
         listItem: false,
-        hardBreak: false
+        hardBreak: isDescription
       }),
       Link.configure({
         openOnClick: true,
@@ -125,7 +125,6 @@
       }),
       KeyboardExtension.configure({
         isDescription,
-        isZoomedRootDescription: isZoomedRoot && isDescription,
         onEnter: () => {
           if (isDescription) {
             dispatch('exitdescription')
