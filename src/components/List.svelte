@@ -64,6 +64,21 @@
     }
   }
 
+  function focusZoomedTitle() {
+    requestAnimationFrame(() => {
+      const titleEditor = containerElement?.querySelector('.zoomed_title [contenteditable]')
+      if (titleEditor) {
+        titleEditor.focus()
+        const range = document.createRange()
+        const sel = window.getSelection()
+        range.selectNodeContents(titleEditor)
+        range.collapse(false)
+        sel.removeAllRanges()
+        sel.addRange(range)
+      }
+    })
+  }
+
   function handleSelectUp(event) {
     const id = event.detail.id
     const items = get(itemStore.items)
@@ -72,6 +87,8 @@
     if (prevItem) {
       itemStore.clearSelection()
       focusItem(prevItem.id)
+    } else if (isZoomedRoot) {
+      focusZoomedTitle()
     } else {
       dispatch('focusparent')
     }
