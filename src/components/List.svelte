@@ -351,6 +351,8 @@
               on:change={handleDescriptionChange}
               on:delete={handleExitDescription}
               on:exitdescription={handleExitDescription}
+              on:selectup={focusZoomedTitle}
+              on:selectdown={handleTitleSelectDown}
               on:blur={handleDescriptionBlur}
             />
           </div>

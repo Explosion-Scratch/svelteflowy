@@ -102,7 +102,18 @@ export const KeyboardExtension = Extension.create({
         return false
       },
 
-      'ArrowUp': () => {
+      'ArrowUp': ({ editor }) => {
+        if (this.options.isDescription) {
+          const { state } = editor
+          const { selection } = state
+          if (selection.from === 1) {
+            if (this.options.onArrowUp) {
+              this.options.onArrowUp()
+              return true
+            }
+          }
+          return false
+        }
         if (this.options.onArrowUp) {
           this.options.onArrowUp()
           return true
@@ -110,7 +121,19 @@ export const KeyboardExtension = Extension.create({
         return false
       },
 
-      'ArrowDown': () => {
+      'ArrowDown': ({ editor }) => {
+        if (this.options.isDescription) {
+          const { state } = editor
+          const { selection, doc } = state
+          // doc.content.size - 1 is the end of the last node's content
+          if (selection.to >= doc.content.size - 1) {
+            if (this.options.onArrowDown) {
+              this.options.onArrowDown()
+              return true
+            }
+          }
+          return false
+        }
         if (this.options.onArrowDown) {
           this.options.onArrowDown()
           return true

@@ -291,6 +291,8 @@
             on:change={handleDescriptionChange}
             on:delete={handleExitDescription}
             on:exitdescription={handleExitDescription}
+            on:selectup={handleExitDescription}
+            on:selectdown={handleSelectDown}
             on:togglecomplete={handleToggleComplete}
             on:hashtagclick={handleHashtagClick}
             on:itemrefclick={handleItemRefClick}

@@ -252,12 +252,31 @@
         .run()
     }
   }
+
+  function handleKeydown(event) {
+    if (isDescription) {
+      // Basic stop propagation for everything. 
+      // KeyboardExtension will handle Enter, Shift-Enter, Arrows etc.
+      // Since it's inside the container, it will see the event before this handler (bubbling phase).
+      // Or rather, if we use a regular Svelte on:keydown, it's a bubbling listener on the div.
+      event.stopPropagation()
+    }
+  }
+
+  function handleMousedown(event) {
+    if (isDescription) {
+      event.stopPropagation()
+    }
+  }
 </script>
 
 <div class="rich-editor-wrapper" class:description={isDescription} class:zoomed-root={isZoomedRoot}>
   <div
     bind:this={editorElement}
     class="editor-container"
+    on:keydown={handleKeydown}
+    on:mousedown={handleMousedown}
+    role="presentation"
   ></div>
 
   <div bind:this={bubbleMenuElement} class="bubble-menu">
