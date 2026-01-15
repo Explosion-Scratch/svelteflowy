@@ -3,6 +3,7 @@ import { generateId } from '../utils/id.js'
 import { findItem, findParent, findItemIndex, filterTree, cloneTree } from '../utils/tree.js'
 import { copyToClipboard, pasteFromClipboard } from '../utils/clipboard.js'
 import { flattenVisibleTree } from '../utils/tree.js'
+import { removeIdsFromTree, extractIdsFromTree, updateIdsInTree, collectIdsFromTree } from '../utils/tree-mutations.js'
 
 const STORAGE_KEY = 'svelteflowy-items'
 
@@ -165,12 +166,7 @@ function createItemStore() {
     if (sel.size === 0) return
     
     updateItems(root => {
-      function removeFromChildren(node) {
-        if (!node.children) return
-        node.children = node.children.filter(c => !sel.has(c.id))
-        node.children.forEach(removeFromChildren)
-      }
-      removeFromChildren(root)
+      removeIdsFromTree(root, sel)
     })
     selection.set(new Set())
   }
@@ -214,22 +210,7 @@ function createItemStore() {
     if (itemIds.length === 0) return
 
     updateItems(root => {
-      const itemsToMove = []
-      
-      function collectAndRemove(node) {
-        if (!node.children) return
-        const removed = []
-        node.children = node.children.filter(child => {
-          if (itemIds.includes(child.id)) {
-            removed.push(child)
-            return false
-          }
-          return true
-        })
-        itemsToMove.push(...removed)
-        node.children.forEach(collectAndRemove)
-      }
-      collectAndRemove(root)
+      const itemsToMove = extractIdsFromTree(root, itemIds)
 
       const targetParent = targetParentId ? findItem(root, targetParentId) : root
       if (!targetParent) return
@@ -255,13 +236,9 @@ function createItemStore() {
     if (sel.size === 0) return
     
     updateItems(root => {
-      function toggleInChildren(node) {
-        if (sel.has(node.id)) {
-          node.completed = !node.completed
-        }
-        node.children?.forEach(toggleInChildren)
-      }
-      toggleInChildren(root)
+      updateIdsInTree(root, sel, (node) => {
+        node.completed = !node.completed
+      })
     })
     selection.set(new Set())
   }
@@ -591,16 +568,8 @@ function createItemStore() {
     if (sel.size === 0) return
     
     const root = get(items)
-    const itemsToCopy = []
-    
-    function collectItems(node) {
-      if (sel.has(node.id)) {
-        itemsToCopy.push(cloneTree(node))
-        return
-      }
-      node.children?.forEach(collectItems)
-    }
-    collectItems(root)
+    const collected = collectIdsFromTree(root, sel)
+    const itemsToCopy = collected.map(node => cloneTree(node))
     
     clipboardItems.set(itemsToCopy)
     await copyToClipboard(itemsToCopy)

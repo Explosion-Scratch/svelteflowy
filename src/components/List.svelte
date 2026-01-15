@@ -4,6 +4,7 @@
   import RichEditor from './RichEditor.svelte'
   import { itemStore } from '../stores/itemStore.js'
   import { generateId } from '../utils/id.js'
+  import { parseStatusPrefix } from '../utils/serializer.js'
   import { focusItem, focusDescription, getItemAbove, getItemBelow, flattenVisible } from '../utils/focus.js'
   import { get } from 'svelte/store'
 
@@ -219,13 +220,12 @@
 
   function handleTitleTextChange(event) {
     const rawText = event.detail.value
-    const match = rawText.match(/^\[(x| )\]\s?/)
+    const statusInfo = parseStatusPrefix(rawText)
     
-    if (match) {
-      console.log('[List] Checkbox detected via title match:', match[0], 'in item:', item.id)
-      const hasCheckbox = true
-      const completed = match[1] === 'x'
-      const text = rawText.slice(match[0].length)
+    // Only handle explicit checkboxes ([ ] or [x]) to match original behavior
+    if (statusInfo.matched && statusInfo.hasCheckbox) {
+      console.log('[List] Checkbox detected via title match in item:', item.id)
+      const { text, hasCheckbox, completed } = statusInfo
       itemStore.updateItem(item.id, { text, hasCheckbox, completed })
     } else {
       itemStore.updateItem(item.id, { text: rawText })

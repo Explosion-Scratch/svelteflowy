@@ -5,6 +5,7 @@
   import Collapse from './Collapse.svelte'
   import ItemMenu from './ItemMenu.svelte'
   import { itemStore } from '../stores/itemStore.js'
+  import { parseStatusPrefix } from '../utils/serializer.js'
   import { focusItem, focusDescription } from '../utils/focus.js'
 
   export let item
@@ -117,13 +118,11 @@
 
   function handleTextChange(event) {
     const rawText = event.detail.value
-    const match = rawText.match(/^\[(x| )\]\s?/)
+    const statusInfo = parseStatusPrefix(rawText)
     
-    if (match) {
-      console.log('[Item] Checkbox detected via text match:', match[0], 'in item:', item.id)
-      const hasCheckbox = true
-      const completed = match[1] === 'x'
-      const text = rawText.slice(match[0].length)
+    if (statusInfo.matched && statusInfo.hasCheckbox) {
+      console.log('[Item] Checkbox detected via text match in item:', item.id)
+      const { text, hasCheckbox, completed } = statusInfo
       itemStore.updateItem(item.id, { text, hasCheckbox, completed })
     } else {
       // console.log('[Item] No checkbox match in text:', rawText)

@@ -213,26 +213,11 @@ function parseListLine(line) {
   let hasCheckbox = metadata.hasCheckbox
   let completed = metadata.completed
   
-  const statusMatch = text.match(/^\[(xx|__|x| )\]\s?/)
-  if (statusMatch) {
-    const status = statusMatch[1]
-    
-    if (status === 'x') {
-      hasCheckbox = true
-      completed = true
-    } else if (status === ' ') {
-      hasCheckbox = true
-      completed = false
-    } else if (status === 'xx') {
-      hasCheckbox = false
-      completed = true
-    } else if (status === '__') {
-      hasCheckbox = false
-      completed = false
-    }
-    
-    // Strip the status prefix from the text
-    text = text.slice(statusMatch[0].length)
+  const statusInfo = parseStatusPrefix(text)
+  if (statusInfo.matched) {
+    text = statusInfo.text
+    hasCheckbox = statusInfo.hasCheckbox
+    completed = statusInfo.completed
   }
   
   return {
@@ -373,23 +358,11 @@ function parsePlainListLine(line) {
     let hasCheckbox = false
     let completed = false
     
-    const statusMatch = text.match(/^\[(xx|__|x| )\]\s?/)
-    if (statusMatch) {
-      const status = statusMatch[1]
-      if (status === 'x') {
-        hasCheckbox = true
-        completed = true
-      } else if (status === ' ') {
-        hasCheckbox = true
-        completed = false
-      } else if (status === 'xx') {
-        hasCheckbox = false
-        completed = true
-      } else if (status === '__') {
-        hasCheckbox = false
-        completed = false
-      }
-      text = text.slice(statusMatch[0].length)
+    const statusInfo = parseStatusPrefix(text)
+    if (statusInfo.matched) {
+      text = statusInfo.text
+      hasCheckbox = statusInfo.hasCheckbox
+      completed = statusInfo.completed
     }
     
     return {
@@ -407,23 +380,11 @@ function parsePlainListLine(line) {
     let hasCheckbox = false
     let completed = false
     
-    const statusMatch = text.match(/^\[(xx|__|x| )\]\s?/)
-    if (statusMatch) {
-      const status = statusMatch[1]
-      if (status === 'x') {
-        hasCheckbox = true
-        completed = true
-      } else if (status === ' ') {
-        hasCheckbox = true
-        completed = false
-      } else if (status === 'xx') {
-        hasCheckbox = false
-        completed = true
-      } else if (status === '__') {
-        hasCheckbox = false
-        completed = false
-      }
-      text = text.slice(statusMatch[0].length)
+    const statusInfo = parseStatusPrefix(text)
+    if (statusInfo.matched) {
+      text = statusInfo.text
+      hasCheckbox = statusInfo.hasCheckbox
+      completed = statusInfo.completed
     }
     
     return {
@@ -489,4 +450,41 @@ export function parseText(text) {
     return deserializeItems(text)
   }
   return markdownToItems(text)
+}
+
+/**
+ * Parses status prefix from text (e.g. "[x] ", "[ ] ")
+ * @param {string} text 
+ * @returns {{ text: string, hasCheckbox: boolean, completed: boolean, matched: boolean }}
+ */
+export function parseStatusPrefix(text) {
+  const statusMatch = text.match(/^\[(xx|__|x| )\]\s?/)
+  if (!statusMatch) {
+    return { text, hasCheckbox: false, completed: false, matched: false }
+  }
+
+  const status = statusMatch[1]
+  let hasCheckbox = false
+  let completed = false
+
+  if (status === 'x') {
+    hasCheckbox = true
+    completed = true
+  } else if (status === ' ') {
+    hasCheckbox = true
+    completed = false
+  } else if (status === 'xx') {
+    hasCheckbox = false
+    completed = true
+  } else if (status === '__') {
+    hasCheckbox = false
+    completed = false
+  }
+
+  return {
+    text: text.slice(statusMatch[0].length),
+    hasCheckbox,
+    completed,
+    matched: true
+  }
 }
