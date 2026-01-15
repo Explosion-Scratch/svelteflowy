@@ -16,7 +16,11 @@
   import LinkModal from './LinkModal.svelte'
   import { allHashtags } from '../stores/hashtagStore.js'
   import { allItems } from '../stores/allItemsStore.js'
-  import '@phosphor-icons/web/duotone'
+  import TextB from 'phosphor-svelte/lib/TextB'
+  import TextItalic from 'phosphor-svelte/lib/TextItalic'
+  import TextStrikethrough from 'phosphor-svelte/lib/TextStrikethrough'
+  import Code from 'phosphor-svelte/lib/Code'
+  import LinkIcon from 'phosphor-svelte/lib/Link'
 
   export let value = ''
   export let placeholder = ''
@@ -26,8 +30,6 @@
   export let editorClass = 'editable'
   export let showPlaceholder = true
   export let itemId = null
-  export let hasCheckbox = false
-  export let completed = false
 
   const dispatch = createEventDispatcher()
 
@@ -177,6 +179,9 @@
         onCheckboxToggle: (checked) => {
           dispatch('checkboxtoggle', { checked })
         },
+        onCheckboxRemoved: () => {
+          dispatch('checkboxremoved')
+        },
         onCheckboxAdded: (checked) => {
           dispatch('checkboxadded', { checked })
         }
@@ -218,14 +223,7 @@
           class: editorClass
         }
       },
-      onCreate: ({ editor: ed }) => {
-        if (hasCheckbox && ed.schema.nodes.checkbox) {
-          ed.commands.insertContentAt(0, {
-            type: 'checkbox',
-            attrs: { checked: completed }
-          })
-          ed.commands.insertContentAt(1, ' ')
-        }
+      onCreate: () => {
       },
       onUpdate: ({ editor: ed }) => {
         const markdown = ed.storage.markdown?.getMarkdown() || ed.getText()
@@ -355,7 +353,7 @@
       on:click={toggleBold}
       title="Bold"
     >
-      <i class="ph-duotone ph-text-b"></i>
+      <TextB weight="duotone" />
     </button>
     <button
       type="button"
@@ -363,7 +361,7 @@
       on:click={toggleItalic}
       title="Italic"
     >
-      <i class="ph-duotone ph-text-italic"></i>
+      <TextItalic weight="duotone" />
     </button>
     <button
       type="button"
@@ -371,7 +369,7 @@
       on:click={toggleStrike}
       title="Strikethrough"
     >
-      <i class="ph-duotone ph-text-strikethrough"></i>
+      <TextStrikethrough weight="duotone" />
     </button>
     <button
       type="button"
@@ -379,7 +377,7 @@
       on:click={toggleCode}
       title="Code"
     >
-      <i class="ph-duotone ph-code"></i>
+      <Code weight="duotone" />
     </button>
     <div class="divider"></div>
     <button
@@ -388,7 +386,7 @@
       on:click={openLinkModal}
       title="Add Link"
     >
-      <i class="ph-duotone ph-link"></i>
+      <LinkIcon weight="duotone" />
     </button>
   </div>
 

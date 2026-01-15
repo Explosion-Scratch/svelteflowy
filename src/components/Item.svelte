@@ -20,6 +20,9 @@
 
   $: hasDescription = !!item.description?.trim()
   $: hasChildren = item.children?.length > 0
+  $: editorValue = item.hasCheckbox 
+    ? (item.completed ? '[x] ' : '[ ] ') + (item.text || '')
+    : (item.text || '')
 
   function handleToggleComplete() {
     const newCompleted = !item.completed
@@ -32,7 +35,11 @@
 
   function handleCheckboxToggle(event) {
     const checked = event.detail.checked
-    itemStore.updateItem(item.id, { completed: checked })
+    itemStore.updateItem(item.id, { completed: checked, hasCheckbox: true })
+  }
+
+  function handleCheckboxRemoved() {
+    itemStore.updateItem(item.id, { hasCheckbox: false })
   }
 
   function handleCheckboxAdded(event) {
@@ -109,7 +116,19 @@
   }
 
   function handleTextChange(event) {
-    itemStore.updateItem(item.id, { text: event.detail.value })
+    const rawText = event.detail.value
+    const match = rawText.match(/^\[(x| )\]\s?/)
+    
+    if (match) {
+      console.log('[Item] Checkbox detected via text match:', match[0], 'in item:', item.id)
+      const hasCheckbox = true
+      const completed = match[1] === 'x'
+      const text = rawText.slice(match[0].length)
+      itemStore.updateItem(item.id, { text, hasCheckbox, completed })
+    } else {
+      // console.log('[Item] No checkbox match in text:', rawText)
+      itemStore.updateItem(item.id, { text: rawText })
+    }
   }
 
   function handleDescriptionChange(event) {
@@ -231,9 +250,7 @@
         <div class="title-editor">
           <RichEditor
             bind:this={titleEditorRef}
-            value={item.text}
-            hasCheckbox={item.hasCheckbox || false}
-            completed={item.completed || false}
+            value={editorValue}
             showPlaceholder={false}
             {highlightPhrase}
             itemId={item.id}
@@ -249,6 +266,7 @@
             on:shiftselectdown={handleShiftSelectDown}
             on:togglecomplete={handleToggleComplete}
             on:checkboxtoggle={handleCheckboxToggle}
+            on:checkboxremoved={handleCheckboxRemoved}
             on:checkboxadded={handleCheckboxAdded}
             on:description={handleShowDescription}
             on:hashtagclick={handleHashtagClick}

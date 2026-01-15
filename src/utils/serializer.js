@@ -39,14 +39,16 @@ export function serializeItems(items, indent = 0) {
   for (const item of items) {
     const metadata = buildMetadata(item)
     let text = item.text || ''
+    const existingMatch = text.match(/^\[(x| )\]\s?/)
+    if (existingMatch) {
+      text = text.slice(existingMatch[0].length)
+    }
     
     let statusPrefix = ''
-    if (item.hasCheckbox && item.completed) {
+    if (item.hasCheckbox) {
+      statusPrefix = item.completed ? '[x] ' : '[ ] '
+    } else if (item.completed) {
       statusPrefix = '[xx] '
-    } else if (item.hasCheckbox && !item.completed) {
-      statusPrefix = '[__] '
-    } else if (!item.hasCheckbox && item.completed) {
-      statusPrefix = '[x] '
     }
     
     result += `${prefix}- ${metadata}${statusPrefix}${text}\n`
@@ -211,24 +213,26 @@ function parseListLine(line) {
   let hasCheckbox = metadata.hasCheckbox
   let completed = metadata.completed
   
-  const statusMatch = text.match(/^\[(xx|__|x| )\]\s*/)
+  const statusMatch = text.match(/^\[(xx|__|x| )\]\s?/)
   if (statusMatch) {
     const status = statusMatch[1]
-    text = text.slice(statusMatch[0].length)
     
-    if (status === 'xx') {
+    if (status === 'x') {
       hasCheckbox = true
-      completed = true
-    } else if (status === '__') {
-      hasCheckbox = true
-      completed = false
-    } else if (status === 'x') {
-      hasCheckbox = false
       completed = true
     } else if (status === ' ') {
+      hasCheckbox = true
+      completed = false
+    } else if (status === 'xx') {
+      hasCheckbox = false
+      completed = true
+    } else if (status === '__') {
       hasCheckbox = false
       completed = false
     }
+    
+    // Strip the status prefix from the text
+    text = text.slice(statusMatch[0].length)
   }
   
   return {
@@ -362,59 +366,69 @@ function parsePlainListLine(line) {
   const indent = leadingSpaces.length
   const trimmed = line.trim()
   
-  const bulletMatch = trimmed.match(/^[-*+]\s*(?:\[(xx|__|x| )\])?\s*(.*)$/)
+  const bulletMatch = trimmed.match(/^[-*+]\s+(.*)$/)
   if (bulletMatch) {
-    const [, status, text] = bulletMatch
+    let text = bulletMatch[1]
     
     let hasCheckbox = false
     let completed = false
     
-    if (status === 'xx') {
-      hasCheckbox = true
-      completed = true
-    } else if (status === '__') {
-      hasCheckbox = true
-      completed = false
-    } else if (status === 'x') {
-      hasCheckbox = true
-      completed = true
-    } else if (status === ' ') {
-      hasCheckbox = true
-      completed = false
+    const statusMatch = text.match(/^\[(xx|__|x| )\]\s?/)
+    if (statusMatch) {
+      const status = statusMatch[1]
+      if (status === 'x') {
+        hasCheckbox = true
+        completed = true
+      } else if (status === ' ') {
+        hasCheckbox = true
+        completed = false
+      } else if (status === 'xx') {
+        hasCheckbox = false
+        completed = true
+      } else if (status === '__') {
+        hasCheckbox = false
+        completed = false
+      }
+      text = text.slice(statusMatch[0].length)
     }
     
     return {
       indent,
-      text: text.trim(),
+      text,
       completed,
       hasCheckbox
     }
   }
   
-  const numberedMatch = trimmed.match(/^\d+[.)]\s*(?:\[(xx|__|x| )\])?\s*(.*)$/)
+  const numberedMatch = trimmed.match(/^\d+[.)]\s+(.*)$/)
   if (numberedMatch) {
-    const [, status, text] = numberedMatch
+    let text = numberedMatch[1]
     
     let hasCheckbox = false
     let completed = false
     
-    if (status === 'xx') {
-      hasCheckbox = true
-      completed = true
-    } else if (status === '__') {
-      hasCheckbox = true
-      completed = false
-    } else if (status === 'x') {
-      hasCheckbox = true
-      completed = true
-    } else if (status === ' ') {
-      hasCheckbox = true
-      completed = false
+    const statusMatch = text.match(/^\[(xx|__|x| )\]\s?/)
+    if (statusMatch) {
+      const status = statusMatch[1]
+      if (status === 'x') {
+        hasCheckbox = true
+        completed = true
+      } else if (status === ' ') {
+        hasCheckbox = true
+        completed = false
+      } else if (status === 'xx') {
+        hasCheckbox = false
+        completed = true
+      } else if (status === '__') {
+        hasCheckbox = false
+        completed = false
+      }
+      text = text.slice(statusMatch[0].length)
     }
     
     return {
       indent,
-      text: text.trim(),
+      text,
       completed,
       hasCheckbox
     }
@@ -435,7 +449,11 @@ export function itemsToPlainMarkdown(items, indent = 0) {
   let result = ''
   
   for (const item of items) {
-    const text = item.text || ''
+    let text = item.text || ''
+    const existingMatch = text.match(/^\[(x| )\]\s?/)
+    if (existingMatch) {
+      text = text.slice(existingMatch[0].length)
+    }
     
     let statusPrefix = ''
     if (item.hasCheckbox) {

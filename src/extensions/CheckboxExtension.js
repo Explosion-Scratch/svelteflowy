@@ -1,4 +1,4 @@
-import { Node, mergeAttributes, InputRule } from '@tiptap/core'
+import { Node, mergeAttributes } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 
 export const CheckboxExtension = Node.create({
@@ -12,9 +12,8 @@ export const CheckboxExtension = Node.create({
   addOptions() {
     return {
       onCheckboxToggle: null,
-      onCheckboxAdded: null,
       onCheckboxRemoved: null,
-      initialChecked: null
+      onCheckboxAdded: null
     }
   },
   
@@ -48,34 +47,34 @@ export const CheckboxExtension = Node.create({
         serialize(state, node) {
           state.write(node.attrs.checked ? '[x] ' : '[ ] ')
         },
-        parse: {
-          setup(markdownit) {
-            markdownit.inline.ruler.push('checkbox', (state, silent) => {
-              const max = state.posMax
-              const start = state.pos
-              
-              if (start + 3 > max) return false
-              if (state.src.charCodeAt(start) !== 0x5B) return false
-              
-              const char = state.src.charAt(start + 1)
-              if (char !== ' ' && char !== 'x') return false
-              if (state.src.charCodeAt(start + 2) !== 0x5D) return false
-              
-              const nextChar = state.src.charAt(start + 3)
-              if (nextChar !== ' ' && nextChar !== '') return false
-              
-              if (!silent) {
-                const token = state.push('checkbox', '', 0)
-                token.attrs = { checked: char === 'x' }
-              }
-              
-              state.pos = start + (nextChar === ' ' ? 4 : 3)
-              return true
-            })
-            
-            markdownit.renderer.rules.checkbox = () => ''
-          }
-        }
+        // parse: {
+        //   setup(markdownit) {
+        //     markdownit.inline.ruler.push('checkbox', (state, silent) => {
+        //       const max = state.posMax
+        //       const start = state.pos
+        //       
+        //       if (start + 3 > max) return false
+        //       if (state.src.charCodeAt(start) !== 0x5B) return false
+        //       
+        //       const char = state.src.charAt(start + 1)
+        //       if (char !== 'x' && char !== ' ') return false
+        //       if (state.src.charCodeAt(start + 2) !== 0x5D) return false
+        //       
+        //       const nextChar = state.src.charAt(start + 3)
+        //       if (nextChar !== ' ' && nextChar !== '') return false
+        //       
+        //       if (!silent) {
+        //         const token = state.push('checkbox', '', 0)
+        //         token.attrs = { checked: char === 'x' }
+        //       }
+        //       
+        //       state.pos = start + (nextChar === ' ' ? 4 : 3)
+        //       return true
+        //     })
+        //     
+        //     markdownit.renderer.rules.checkbox = () => ''
+        //   }
+        // }
       }
     }
   },
@@ -149,59 +148,57 @@ export const CheckboxExtension = Node.create({
       }
     }
   },
-  
-  addInputRules() {
-    const onCheckboxAdded = this.options.onCheckboxAdded
-    
-    return [
-      new InputRule({
-        find: /^\[( |x)\]\s$/,
-        handler: ({ state, range, match }) => {
-          const isChecked = match[1] === 'x'
-          const { tr } = state
-          
-          tr.delete(range.from, range.to)
-          tr.insert(range.from, this.type.create({ checked: isChecked }))
-          tr.insertText(' ', range.from + 1)
-          
-          if (onCheckboxAdded) {
-            setTimeout(() => onCheckboxAdded(isChecked), 0)
-          }
-          
-          return tr
-        }
-      })
-    ]
-  },
 
   addProseMirrorPlugins() {
     const extensionThis = this
+    const onCheckboxRemoved = this.options.onCheckboxRemoved
     
     return [
       new Plugin({
-        key: new PluginKey('checkboxPaste'),
-        props: {
-          transformPasted(slice) {
-            return slice
-          }
-        },
+        key: new PluginKey('checkboxSync'),
         appendTransaction: (transactions, oldState, newState) => {
           const docChanged = transactions.some(tr => tr.docChanged)
           if (!docChanged) return null
           
+          let oldHasCheckbox = false
+          oldState.doc.descendants((node) => {
+            if (node.type.name === 'checkbox') {
+              oldHasCheckbox = true
+              return false
+            }
+          })
+          
+          let newHasCheckbox = false
+          newState.doc.descendants((node) => {
+            if (node.type.name === 'checkbox') {
+              newHasCheckbox = true
+              return false
+            }
+          })
+          
+          if (oldHasCheckbox && !newHasCheckbox && onCheckboxRemoved) {
+            setTimeout(() => onCheckboxRemoved(), 0)
+          }
+          
           let tr = newState.tr
           let modified = false
+          const { onCheckboxAdded } = extensionThis.options
           
           newState.doc.descendants((node, pos) => {
             if (node.isText) {
               const text = node.text
-              const match = text.match(/^\[( |x)\]\s/)
+              const match = text.match(/^\[(x| )\]\s?/)
               if (match) {
                 const isChecked = match[1] === 'x'
                 const checkboxNode = extensionThis.type.create({ checked: isChecked })
                 
                 tr.replaceWith(pos, pos + match[0].length, checkboxNode)
                 modified = true
+                
+                if (onCheckboxAdded) {
+                  setTimeout(() => onCheckboxAdded(isChecked), 0)
+                }
+                
                 return false
               }
             }
@@ -215,11 +212,33 @@ export const CheckboxExtension = Node.create({
 
   addCommands() {
     return {
+      insertCheckbox: (checked = false) => ({ editor, tr }) => {
+        const checkboxNode = this.type.create({ checked })
+        tr.insert(0, checkboxNode)
+        return true
+      },
+      
       setCheckboxChecked: (checked) => ({ editor, tr }) => {
         let found = false
         editor.state.doc.descendants((node, pos) => {
           if (node.type.name === 'checkbox' && !found) {
             tr.setNodeMarkup(pos, undefined, { checked })
+            found = true
+            return false
+          }
+        })
+        return found
+      },
+      
+      removeCheckbox: () => ({ editor, tr }) => {
+        let found = false
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === 'checkbox' && !found) {
+            tr.delete(pos, pos + 1)
+            const nextChar = editor.state.doc.textBetween(pos, pos + 1, '')
+            if (nextChar === ' ') {
+              tr.delete(pos, pos + 1)
+            }
             found = true
             return false
           }

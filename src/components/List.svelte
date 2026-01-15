@@ -26,9 +26,13 @@
 
   let containerElement
   let showDescriptionEditor = false
+  let zoomedTitleEditorRef
 
   $: isZoomedRoot = isTop && !!$zoomedItemId && item.id === $zoomedItemId
   $: hasDescription = !!item.description?.trim()
+  $: titleEditorValue = item.hasCheckbox 
+    ? (item.completed ? '[x] ' : '[ ] ') + (item.text || '')
+    : (item.text || '')
 
   function handleNewBullet(event) {
     const afterId = event.detail.id
@@ -213,6 +217,44 @@
     }
   }
 
+  function handleTitleTextChange(event) {
+    const rawText = event.detail.value
+    const match = rawText.match(/^\[(x| )\]\s?/)
+    
+    if (match) {
+      console.log('[List] Checkbox detected via title match:', match[0], 'in item:', item.id)
+      const hasCheckbox = true
+      const completed = match[1] === 'x'
+      const text = rawText.slice(match[0].length)
+      itemStore.updateItem(item.id, { text, hasCheckbox, completed })
+    } else {
+      itemStore.updateItem(item.id, { text: rawText })
+    }
+  }
+
+  function handleTitleToggleComplete() {
+    const newCompleted = !item.completed
+    itemStore.updateItem(item.id, { completed: newCompleted })
+    
+    if (zoomedTitleEditorRef?.hasCheckboxNode?.()) {
+      zoomedTitleEditorRef.setCheckboxState(newCompleted)
+    }
+  }
+
+  function handleTitleCheckboxToggle(event) {
+    const checked = event.detail.checked
+    itemStore.updateItem(item.id, { completed: checked, hasCheckbox: true })
+  }
+
+  function handleTitleCheckboxRemoved() {
+    itemStore.updateItem(item.id, { hasCheckbox: false })
+  }
+
+  function handleTitleCheckboxAdded(event) {
+    const checked = event.detail.checked
+    itemStore.updateItem(item.id, { hasCheckbox: true, completed: checked })
+  }
+
   function handleCollapseClick(childId) {
     itemStore.toggleOpen(childId)
   }
@@ -267,22 +309,23 @@
 >
   {#if isZoomedRoot}
     {#key item.id}
-      <h1 class="zoomed_title" id="item_{item.id}">
+      <h1 class="zoomed_title" class:completed={item.completed} id="item_{item.id}">
         <RichEditor
-          bind:value={item.text}
+          bind:this={zoomedTitleEditorRef}
+          value={titleEditorValue}
           {highlightPhrase}
           showPlaceholder={false}
           itemId={item.id}
-          hasCheckbox={item.hasCheckbox}
-          completed={item.completed}
           on:selectdown={handleTitleSelectDown}
           on:newbullet={handleTitleNewBullet}
           on:description={handleTitleDescription}
-          on:change={() => itemStore.updateItem(item.id, { text: item.text })}
+          on:change={handleTitleTextChange}
           on:hashtagclick={handleHashtagClick}
           on:itemrefclick={handleItemRefClick}
-          on:checkboxtoggle={(e) => itemStore.updateItem(item.id, { completed: e.detail.checked })}
-          on:checkboxadded={(e) => itemStore.updateItem(item.id, { hasCheckbox: true, completed: e.detail.checked })}
+          on:togglecomplete={handleTitleToggleComplete}
+          on:checkboxtoggle={handleTitleCheckboxToggle}
+          on:checkboxremoved={handleTitleCheckboxRemoved}
+          on:checkboxadded={handleTitleCheckboxAdded}
         />
       </h1>
 
@@ -309,21 +352,21 @@
     {/key}
   {:else if isTop && item.text?.length && !outermost}
     {#key item.id}
-      <h2 class="item_title" id="item_{item.id}">
+      <h2 class="item_title" class:completed={item.completed} id="item_{item.id}">
         <RichEditor
-          bind:value={item.text}
+          value={titleEditorValue}
           {highlightPhrase}
           showPlaceholder={false}
           itemId={item.id}
-          hasCheckbox={item.hasCheckbox}
-          completed={item.completed}
           on:selectdown={handleTitleSelectDown}
           on:newbullet={handleTitleNewBullet}
-          on:change={() => itemStore.updateItem(item.id, { text: item.text })}
+          on:change={handleTitleTextChange}
           on:hashtagclick={handleHashtagClick}
           on:itemrefclick={handleItemRefClick}
-          on:checkboxtoggle={(e) => itemStore.updateItem(item.id, { completed: e.detail.checked })}
-          on:checkboxadded={(e) => itemStore.updateItem(item.id, { hasCheckbox: true, completed: e.detail.checked })}
+          on:togglecomplete={handleTitleToggleComplete}
+          on:checkboxtoggle={handleTitleCheckboxToggle}
+          on:checkboxremoved={handleTitleCheckboxRemoved}
+          on:checkboxadded={handleTitleCheckboxAdded}
         />
       </h2>
     {/key}
@@ -401,6 +444,12 @@
     font-size: 1.75rem;
     font-weight: 700;
     line-height: 1.3;
+  }
+
+  .zoomed_title.completed :global(.editable),
+  .item_title.completed :global(.editable) {
+    text-decoration: line-through;
+    opacity: 0.6;
   }
 
   .zoomed_description {

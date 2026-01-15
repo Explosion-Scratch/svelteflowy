@@ -1,6 +1,8 @@
 <script>
   import { createEventDispatcher, onMount, tick } from 'svelte'
-  import '@phosphor-icons/web/duotone'
+  import LinkIcon from 'phosphor-svelte/lib/Link'
+  import X from 'phosphor-svelte/lib/X'
+  import Check from 'phosphor-svelte/lib/Check'
 
   export let visible = false
   export let selectedText = ''
@@ -62,10 +64,10 @@
   <div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleKeyDown} role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
     <div class="modal">
       <div class="modal-header">
-        <i class="ph-duotone ph-link"></i>
+        <LinkIcon weight="duotone" />
         <span id="modal-title">Add Link</span>
         <button type="button" class="close-btn" on:click={close} aria-label="Close modal">
-          <i class="ph-duotone ph-x"></i>
+          <X weight="duotone" />
         </button>
       </div>
 
@@ -107,7 +109,7 @@
             Cancel
           </button>
           <button type="submit" class="btn btn-primary" disabled={!linkUrl.trim()}>
-            <i class="ph-duotone ph-check"></i>
+            <Check weight="duotone" />
             Add Link
           </button>
         </div>
@@ -147,8 +149,10 @@
     font-size: 15px;
   }
 
-  .modal-header i {
+  .modal-header :global(svg) {
     font-size: 18px;
+    width: 18px;
+    height: 18px;
     color: var(--accent, #49baf2);
   }
 

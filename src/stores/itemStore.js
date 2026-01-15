@@ -79,6 +79,10 @@ function createItemStore() {
   let isUndoRedo = false
 
   items.subscribe(saveToStorage)
+  
+  items.subscribe(val => {
+    console.log('[itemStore] Tree updated:', val)
+  })
 
   function pushToUndo(state) {
     if (isUndoRedo) return
