@@ -1,6 +1,5 @@
 <script>
   import { backOut } from 'svelte/easing'
-  import { fade } from 'svelte/transition'
   import { clickOutside } from '../actions/clickOutside.js'
   import { createEventDispatcher } from 'svelte'
 
@@ -34,8 +33,6 @@
   style:top={position.y + 'px'}
   style:left={position.x + 'px'}
   class="menu"
-  out:fade={{ duration: 100 }}
-  in:fadescale={{ duration: 500 }}
 >
   {#each items as item}
     <button

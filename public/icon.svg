@@ -1,62 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#49baf2"/>
-      <stop offset="100%" stop-color="#3498db"/>
-    </linearGradient>
-    <linearGradient id="flow" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.85"/>
-    </linearGradient>
-  </defs>
+  <rect x="64" y="64" width="384" height="384" rx="32" fill="#fff" stroke="#1a1a1a" stroke-width="24"/>
   
-  <!-- Background circle -->
-  <circle cx="256" cy="256" r="240" fill="url(#bg)"/>
-  
-  <!-- Outer ring -->
-  <circle cx="256" cy="256" r="220" fill="none" stroke="url(#flow)" stroke-width="8" opacity="0.3"/>
-  
-  <!-- Main bullet hierarchy -->
-  <g fill="url(#flow)">
-    <!-- Root bullet -->
-    <circle cx="160" cy="180" r="20"/>
+  <g fill="#1a1a1a">
+    <circle cx="160" cy="180" r="14"/>
+    <rect x="200" y="168" width="180" height="24" rx="12"/>
     
-    <!-- First child line -->
-    <rect x="160" y="180" width="3" height="60" rx="1.5"/>
+    <circle cx="160" cy="256" r="14"/>
+    <rect x="200" y="244" width="140" height="24" rx="12"/>
     
-    <!-- First child bullet -->
-    <circle cx="200" cy="250" r="16"/>
-    
-    <!-- Connector line -->
-    <rect x="160" y="238" width="40" height="3" rx="1.5"/>
-    
-    <!-- Second child line -->
-    <rect x="160" y="240" width="3" height="60" rx="1.5"/>
-    
-    <!-- Second child bullet with checkbox -->
-    <g transform="translate(200, 310)">
-      <rect x="-16" y="-16" width="32" height="32" rx="6" fill="none" stroke="url(#flow)" stroke-width="3"/>
-      <path d="M-6 0 L-2 5 L8 -6" stroke="url(#flow)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
-    
-    <!-- Connector line -->
-    <rect x="160" y="298" width="40" height="3" rx="1.5"/>
-    
-    <!-- Third child -->
-    <rect x="160" y="300" width="3" height="60" rx="1.5"/>
-    <circle cx="200" cy="370" r="16"/>
-    <rect x="160" y="358" width="40" height="3" rx="1.5"/>
+    <circle cx="160" cy="332" r="14"/>
+    <rect x="200" y="320" width="160" height="24" rx="12"/>
   </g>
-  
-  <!-- Text lines representation -->
-  <g fill="url(#flow)" opacity="0.6">
-    <rect x="240" y="172" width="140" height="16" rx="8"/>
-    <rect x="240" y="242" width="120" height="12" rx="6"/>
-    <rect x="240" y="302" width="100" height="12" rx="6"/>
-    <rect x="240" y="362" width="130" height="12" rx="6"/>
-  </g>
-  
-  <!-- Decorative flow curves -->
-  <path d="M380 160 Q420 200 380 250 Q340 300 380 350" 
-        stroke="url(#flow)" stroke-width="4" fill="none" opacity="0.3" stroke-linecap="round"/>
 </svg>

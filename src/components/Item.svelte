@@ -7,7 +7,6 @@
   import { itemStore } from '../stores/itemStore.js'
   import { parseStatusPrefix } from '../utils/serializer.js'
   import { focusItem, focusDescription } from '../utils/focus.js'
-  import { send, receive } from '../utils/transitions.js'
 
   export let item
   export let isSelected = false
@@ -252,11 +251,7 @@
           background={hasChildren && !item.open}
           on:click={handleZoom}
         />
-        <div 
-          class="title-editor"
-          in:receive={{key: 'title_' + item.id}}
-          out:send={{key: 'title_' + item.id}}
-        >
+        <div class="title-editor">
           <RichEditor
             bind:this={titleEditorRef}
             value={editorValue}
@@ -286,11 +281,7 @@
       </div>
 
       {#if hasDescription || showDescriptionEditor}
-        <div 
-          class="description-editor"
-          in:receive={{key: 'desc_' + item.id}}
-          out:send={{key: 'desc_' + item.id}}
-        >
+        <div class="description-editor">
           <RichEditor
             bind:value={item.description}
             isDescription={true}

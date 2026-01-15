@@ -122,29 +122,33 @@ function createFileService() {
 
   async function initFromStoredHandle() {
     const stored = await retrieveStoredHandle()
-    if (!stored) return false
+    if (!stored) return { success: false, items: null }
 
     try {
       const hasPermission = await verifyPermission(stored)
       if (!hasPermission) {
         await clearStoredHandle()
-        return false
+        return { success: false, items: null }
       }
 
       const canWrite = await testWritePermission(stored)
       if (!canWrite) {
         await clearStoredHandle()
-        return false
+        return { success: false, items: null }
       }
+
+      const file = await stored.getFile()
+      const content = await file.text()
+      const items = parseText(content)
 
       fileHandle.set(stored)
       fileName.set(stored.name)
       saveState.set(SaveState.SAVED)
-      return true
+      return { success: true, items }
     } catch (e) {
       console.warn('Failed to restore file handle:', e)
       await clearStoredHandle()
-      return false
+      return { success: false, items: null }
     }
   }
 

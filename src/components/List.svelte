@@ -7,8 +7,6 @@
   import { parseStatusPrefix } from '../utils/serializer.js'
   import { focusItem, focusDescription, getItemAbove, getItemBelow, flattenVisible } from '../utils/focus.js'
   import { get } from 'svelte/store'
-  import { send, receive } from '../utils/transitions.js'
-  import { flip } from 'svelte/animate'
 
   function handleHashtagClick(event) {
     itemStore.setSearch(event.detail.hashtag)
@@ -30,7 +28,7 @@
 
   const dispatch = createEventDispatcher()
 
-  const { selection, selectionAnchor, selectionDirection, transitionMode } = itemStore
+  const { selection, selectionAnchor, selectionDirection } = itemStore
 
   let containerElement
   let showDescriptionEditor = false
@@ -315,96 +313,87 @@
   class:outermost
 >
   {#if isZoomedRoot}
-    <h1 
-        class="zoomed_title" 
-        class:completed={item.completed} 
-        id="item_{item.id}"
-        in:receive={{key: 'title_' + item.id}}
-        out:send={{key: 'title_' + item.id}}
-      >
-        <RichEditor
-          bind:this={zoomedTitleEditorRef}
-          value={titleEditorValue}
-          {highlightPhrase}
-          showPlaceholder={false}
-          itemId={item.id}
-          on:selectdown={handleTitleSelectDown}
-          on:newbullet={handleTitleNewBullet}
-          on:description={handleTitleDescription}
-          on:change={handleTitleTextChange}
-          on:hashtagclick={handleHashtagClick}
-          on:itemrefclick={handleItemRefClick}
-          on:dateclick={handleDateClick}
-          on:togglecomplete={handleTitleToggleComplete}
-          on:checkboxtoggle={handleTitleCheckboxToggle}
-          on:checkboxremoved={handleTitleCheckboxRemoved}
-          on:checkboxadded={handleTitleCheckboxAdded}
-        />
-      </h1>
-
-      {#if hasDescription || showDescriptionEditor}
-        <div 
-          class="zoomed_description"
-          in:receive={{key: 'desc_' + item.id}}
-          out:send={{key: 'desc_' + item.id}}
+    {#key item.id}
+      <h1 
+          class="zoomed_title" 
+          class:completed={item.completed} 
+          id="item_{item.id}"
         >
           <RichEditor
-            bind:value={item.description}
-            isDescription={true}
-            isZoomedRoot={true}
-            showPlaceholder={false}
+            bind:this={zoomedTitleEditorRef}
+            value={titleEditorValue}
             {highlightPhrase}
-            editorClass="editable description"
-            on:change={handleDescriptionChange}
-            on:delete={handleExitDescription}
-            on:exitdescription={handleExitDescription}
-            on:blur={handleDescriptionBlur}
+            showPlaceholder={false}
+            itemId={item.id}
+            on:selectdown={handleTitleSelectDown}
+            on:newbullet={handleTitleNewBullet}
+            on:description={handleTitleDescription}
+            on:change={handleTitleTextChange}
+            on:hashtagclick={handleHashtagClick}
+            on:itemrefclick={handleItemRefClick}
+            on:dateclick={handleDateClick}
+            on:togglecomplete={handleTitleToggleComplete}
+            on:checkboxtoggle={handleTitleCheckboxToggle}
+            on:checkboxremoved={handleTitleCheckboxRemoved}
+            on:checkboxadded={handleTitleCheckboxAdded}
           />
-        </div>
-      {:else}
-        <button 
-          class="add-description-btn" 
-          on:click={handleDescriptionClick}
-          in:receive={{key: 'desc_' + item.id}}
-          out:send={{key: 'desc_' + item.id}}
-        >
-          Click to add description...
-        </button>
-      {/if}
+        </h1>
+
+        {#if hasDescription || showDescriptionEditor}
+          <div class="zoomed_description">
+            <RichEditor
+              bind:value={item.description}
+              isDescription={true}
+              isZoomedRoot={true}
+              showPlaceholder={false}
+              {highlightPhrase}
+              editorClass="editable description"
+              on:change={handleDescriptionChange}
+              on:delete={handleExitDescription}
+              on:exitdescription={handleExitDescription}
+              on:blur={handleDescriptionBlur}
+            />
+          </div>
+        {:else}
+          <button 
+            class="add-description-btn" 
+            on:click={handleDescriptionClick}
+          >
+            Click to add description...
+          </button>
+        {/if}
+    {/key}
   {:else if isTop && item.text?.length && !outermost}
-    <h2 
-        class="item_title" 
-        class:completed={item.completed} 
-        id="item_{item.id}"
-        in:receive={{key: 'title_' + item.id}}
-        out:send={{key: 'title_' + item.id}}
-      >
-        <RichEditor
-          value={titleEditorValue}
-          {highlightPhrase}
-          showPlaceholder={false}
-          itemId={item.id}
-          on:selectdown={handleTitleSelectDown}
-          on:newbullet={handleTitleNewBullet}
-          on:change={handleTitleTextChange}
-          on:hashtagclick={handleHashtagClick}
-          on:itemrefclick={handleItemRefClick}
-          on:dateclick={handleDateClick}
-          on:togglecomplete={handleTitleToggleComplete}
-          on:checkboxtoggle={handleTitleCheckboxToggle}
-          on:checkboxremoved={handleTitleCheckboxRemoved}
-          on:checkboxadded={handleTitleCheckboxAdded}
-        />
-    </h2>
+    {#key item.id}
+      <h2 
+          class="item_title" 
+          class:completed={item.completed} 
+          id="item_{item.id}"
+        >
+          <RichEditor
+            value={titleEditorValue}
+            {highlightPhrase}
+            showPlaceholder={false}
+            itemId={item.id}
+            on:selectdown={handleTitleSelectDown}
+            on:newbullet={handleTitleNewBullet}
+            on:change={handleTitleTextChange}
+            on:hashtagclick={handleHashtagClick}
+            on:itemrefclick={handleItemRefClick}
+            on:dateclick={handleDateClick}
+            on:togglecomplete={handleTitleToggleComplete}
+            on:checkboxtoggle={handleTitleCheckboxToggle}
+            on:checkboxremoved={handleTitleCheckboxRemoved}
+            on:checkboxadded={handleTitleCheckboxAdded}
+          />
+      </h2>
+    {/key}
   {/if}
 
   {#if item.children?.length && (item.open || isTop)}
     <ul class:children={!isTop} on:click={handleEmptyAreaClick} on:keydown={() => {}}>
       {#each item.children as child (child.id)}
-        <div 
-          class="item-row" 
-          animate:flip={{duration: $transitionMode === 'move' ? 300 : 0}}
-        >
+        <div class="item-row">
           <Item
             item={child}
             isSelected={$selection.has(child.id)}

@@ -1,8 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte'
   import { clickOutside } from '../actions/clickOutside.js'
-  import { fade, scale } from 'svelte/transition'
-  import { backOut } from 'svelte/easing'
 
   export let position = { x: 0, y: 0 }
 
@@ -25,8 +23,6 @@
   style="left: {position.x}px; top: {position.y}px;"
   use:clickOutside
   on:click_outside={() => dispatch('close')}
-  in:scale={{ duration: 150, start: 0.95, easing: backOut }}
-  out:fade={{ duration: 100 }}
 >
   {#each menuItems as item}
     <button

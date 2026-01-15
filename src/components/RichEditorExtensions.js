@@ -42,7 +42,21 @@ export function getExtensions({
     }),
     Link.configure({
       openOnClick: true,
-      autolink: true
+      autolink: true,
+      linkOnPaste: true,
+      defaultProtocol: 'https',
+      protocols: [
+        'http',
+        'https',
+        'mailto',
+        { scheme: 'file', optionalSlashes: false },
+        { scheme: 'tel', optionalSlashes: true }
+      ],
+      HTMLAttributes: {
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        class: 'editor-link'
+      }
     }),
     Markdown.configure({
       html: true,

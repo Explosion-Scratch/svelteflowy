@@ -3,6 +3,7 @@
   import BreadCrumb from './components/BreadCrumb.svelte'
   import SearchBar from './components/SearchBar.svelte'
   import SaveIndicator from './components/SaveIndicator.svelte'
+  import Homepage from './components/Homepage.svelte'
   import { copyToClipboard } from './utils/clipboard.js'
   import { itemStore } from './stores/itemStore.js'
   import { dragDropStore } from './stores/dragDropStore.js'
@@ -17,6 +18,7 @@
 
   const { items, filteredItems, highlightPhrase, selection, zoomedItemId, zoomedItem } = itemStore
   const { isDraggingItems, dropTarget } = dragDropStore
+  const { fileHandle } = fileService
 
   let isDragging = false
   let dragStartX = 0
@@ -29,12 +31,25 @@
   let dropIndicatorY = null
   let dropIndicatorX = null
 
+  let skipHomepage = false
+
+  $: showHomepage = !$fileHandle && !skipHomepage
+
+  function handleContinueToTodos() {
+    skipHomepage = true
+  }
+
   onMount(async () => {
     urlStore.initFromUrl()
     urlStore.setupUrlSync()
     
     if (fileService.isFileSystemAccessSupported()) {
-      await fileService.initFromStoredHandle()
+      const result = await fileService.initFromStoredHandle()
+      if (result.success && result.items) {
+        const rootItems = get(items)
+        itemStore.updateItem(rootItems.id, { children: result.items })
+        isInitialLoad = true
+      }
     }
   })
 
@@ -671,57 +686,63 @@
   on:mousemove={handleMouseMove}
 />
 
-<div class="header">
-  <BreadCrumb />
+{#if showHomepage}
+  <Homepage on:continue={handleContinueToTodos} />
+{:else}
+  <div class="header">
+    <BreadCrumb />
 
-  <div class="header-center">
-    <SaveIndicator />
+    <div class="header-center">
+      <SaveIndicator />
+    </div>
+
+    <div class="header-right">
+      <SearchBar />
+
+      <button class="copy-btn" on:click={handleCopy} title="Copy as Markdown" aria-label="Copy as Markdown">
+        <svg width="20" height="20" viewBox="0 0 256 256">
+          <path
+            fill="currentColor"
+            d="M216 34H88a6 6 0 0 0-6 6v42H40a6 6 0 0 0-6 6v128a6 6 0 0 0 6 6h128a6 6 0 0 0 6-6v-42h42a6 6 0 0 0 6-6V40a6 6 0 0 0-6-6Zm-54 176H46V94h116Zm48-48h-36V88a6 6 0 0 0-6-6H94V46h116Z"
+          />
+        </svg>
+      </button>
+    </div>
   </div>
 
-  <div class="header-right">
-    <SearchBar />
-
-    <button class="copy-btn" on:click={handleCopy} title="Copy as Markdown" aria-label="Copy as Markdown">
-      <svg width="20" height="20" viewBox="0 0 256 256">
-        <path
-          fill="currentColor"
-          d="M216 34H88a6 6 0 0 0-6 6v42H40a6 6 0 0 0-6 6v128a6 6 0 0 0 6 6h128a6 6 0 0 0 6-6v-42h42a6 6 0 0 0 6-6V40a6 6 0 0 0-6-6Zm-54 176H46V94h116Zm48-48h-36V88a6 6 0 0 0-6-6H94V46h116Z"
-        />
-      </svg>
-    </button>
-  </div>
-</div>
-
-<div 
-  class="outer_container"
-  bind:this={containerRef}
-  on:mousedown={handleMouseDown}
-  on:click={handleContainerClick}
->
-  <div class="container">
-    <List
-      outermost={true}
-      item={$filteredItems.tree}
-      isTop={true}
-      highlightPhrase={$highlightPhrase}
-      activeZoomedItemId={$zoomedItemId}
-    />
-  </div>
-</div>
-
-{#if selectionBox}
   <div 
-    class="selection-box"
-    style="left: {selectionBox.left}px; top: {selectionBox.top}px; width: {selectionBox.width}px; height: {selectionBox.height}px;"
-  ></div>
+    class="outer_container"
+    bind:this={containerRef}
+    on:mousedown={handleMouseDown}
+    on:click={handleContainerClick}
+    role="application"
+  >
+    <div class="container">
+      <List
+        outermost={true}
+        item={$filteredItems.tree}
+        isTop={true}
+        highlightPhrase={$highlightPhrase}
+        activeZoomedItemId={$zoomedItemId}
+      />
+    </div>
+  </div>
+
+  {#if selectionBox}
+    <div 
+      class="selection-box"
+      style="left: {selectionBox.left}px; top: {selectionBox.top}px; width: {selectionBox.width}px; height: {selectionBox.height}px;"
+    ></div>
+  {/if}
+
+  {#if dropIndicatorY !== null}
+    <div 
+      class="drop-indicator"
+      style="top: {dropIndicatorY}px; left: {dropIndicatorX || 0}px;"
+    ></div>
+  {/if}
 {/if}
 
-{#if dropIndicatorY !== null}
-  <div 
-    class="drop-indicator"
-    style="top: {dropIndicatorY}px; left: {dropIndicatorX || 0}px;"
-  ></div>
-{/if}
 
 <style>
   :root {

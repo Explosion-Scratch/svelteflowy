@@ -73,12 +73,6 @@ function createItemStore() {
   const selectionHead = writable(null)
   const zoomedItemId = writable(null)
   const clipboardItems = writable([])
-  const transitionMode = writable(null)
-
-  function setTransitionMode(mode) {
-    transitionMode.set(mode)
-    setTimeout(() => transitionMode.set(null), 350)
-  }
 
   const MAX_HISTORY = 50
   let undoStack = []
@@ -376,7 +370,6 @@ function createItemStore() {
     const sel = get(selection)
     if (sel.size === 0) return
     
-    setTransitionMode('move')
     const rootItems = get(items)
     const zoomId = get(zoomedItemId)
     const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
@@ -393,7 +386,6 @@ function createItemStore() {
     const sel = get(selection)
     if (sel.size === 0) return
     
-    setTransitionMode('move')
     const rootItems = get(items)
     const zoomId = get(zoomedItemId)
     const root = zoomId ? findItem(rootItems, zoomId) || rootItems : rootItems
@@ -655,7 +647,6 @@ function createItemStore() {
     filteredItems,
     highlightPhrase,
     selectionHead,
-    transitionMode,
     
     addItem,
     deleteItem,

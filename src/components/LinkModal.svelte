@@ -52,7 +52,29 @@
 
   function handleKeyDown(event) {
     if (event.key === 'Escape') {
+      event.stopPropagation()
       close()
+    }
+  }
+
+  function stopInputPropagation(event) {
+    const key = event.key
+    const isModifier = event.metaKey || event.ctrlKey || event.altKey
+    
+    if (key === 'Enter') {
+      return
+    }
+    
+    if (key === 'Escape') {
+      event.stopPropagation()
+      close()
+      return
+    }
+    
+    if (key === 'Tab' || key === 'Delete' || key === 'Backspace' ||
+        key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight' ||
+        isModifier) {
+      event.stopPropagation()
     }
   }
 </script>
@@ -80,6 +102,7 @@
             type="text"
             bind:value={linkText}
             placeholder="Link text"
+            on:keydown={stopInputPropagation}
           />
         </div>
 
@@ -90,6 +113,7 @@
             type="text"
             bind:value={linkUrl}
             placeholder="https://example.com"
+            on:keydown={stopInputPropagation}
             required
           />
         </div>
@@ -101,6 +125,7 @@
             type="text"
             bind:value={linkTitle}
             placeholder="Link title for accessibility"
+            on:keydown={stopInputPropagation}
           />
         </div>
 

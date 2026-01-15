@@ -200,6 +200,7 @@
   function openLinkModal() {
     const { from, to } = editor.state.selection
     selectedTextForLink = editor.state.doc.textBetween(from, to, ' ')
+    editor?.commands.blur()
     showLinkModal = true
   }
 
@@ -405,6 +406,21 @@
 
   :global(.hashtag:hover) {
     background: rgba(73, 186, 242, 0.2);
+  }
+
+  :global(.editor-link) {
+    color: var(--accent, #49baf2);
+    text-decoration: underline;
+    text-decoration-color: rgba(73, 186, 242, 0.4);
+    text-underline-offset: 2px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  :global(.editor-link:hover) {
+    text-decoration-color: var(--accent, #49baf2);
+    background: rgba(73, 186, 242, 0.1);
+    border-radius: 2px;
   }
 
   :global(.item-ref) {
