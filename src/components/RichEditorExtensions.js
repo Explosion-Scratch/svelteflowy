@@ -115,6 +115,11 @@ export function getExtensions({
       },
       onShiftArrowDown: () => {
         dispatch('shiftselectdown')
+      },
+      onEscape: () => {
+        if (isDescription) {
+          dispatch('exitdescription')
+        }
       }
     }),
     CheckboxExtension.configure({

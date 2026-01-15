@@ -16,6 +16,7 @@ export const KeyboardExtension = Extension.create({
       onArrowDown: null,
       onShiftArrowUp: null,
       onShiftArrowDown: null,
+      onEscape: null,
       isDescription: false,
       isZoomedRootDescription: false
     }
@@ -152,6 +153,14 @@ export const KeyboardExtension = Extension.create({
       'Shift-ArrowDown': () => {
         if (this.options.onShiftArrowDown) {
           this.options.onShiftArrowDown()
+          return true
+        }
+        return false
+      },
+
+      'Escape': () => {
+        if (this.options.isDescription && this.options.onEscape) {
+          this.options.onEscape()
           return true
         }
         return false

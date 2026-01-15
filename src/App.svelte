@@ -266,6 +266,14 @@
       tick().then(() => focusItem(newId))
     }
 
+    if (event.shiftKey && event.key === 'Enter' && !event.target.closest('[contenteditable]')) {
+      if ($zoomedItemId) {
+        event.preventDefault()
+        focusDescription($zoomedItemId)
+        return
+      }
+    }
+
     if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
       if (event.shiftKey) {
         event.preventDefault()
