@@ -1,4 +1,5 @@
 import { Node, mergeAttributes, InputRule } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 
 export const CheckboxExtension = Node.create({
   name: 'checkbox',
@@ -7,6 +8,15 @@ export const CheckboxExtension = Node.create({
   inline: true,
   atom: true,
   selectable: false,
+  
+  addOptions() {
+    return {
+      onCheckboxToggle: null,
+      onCheckboxAdded: null,
+      onCheckboxRemoved: null,
+      initialChecked: null
+    }
+  },
   
   addAttributes() {
     return {
@@ -32,8 +42,48 @@ export const CheckboxExtension = Node.create({
     return ['span', mergeAttributes(HTMLAttributes, { 'data-type': 'checkbox' })]
   },
   
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state, node) {
+          state.write(node.attrs.checked ? '[x] ' : '[ ] ')
+        },
+        parse: {
+          setup(markdownit) {
+            markdownit.inline.ruler.push('checkbox', (state, silent) => {
+              const max = state.posMax
+              const start = state.pos
+              
+              if (start + 3 > max) return false
+              if (state.src.charCodeAt(start) !== 0x5B) return false
+              
+              const char = state.src.charAt(start + 1)
+              if (char !== ' ' && char !== 'x') return false
+              if (state.src.charCodeAt(start + 2) !== 0x5D) return false
+              
+              const nextChar = state.src.charAt(start + 3)
+              if (nextChar !== ' ' && nextChar !== '') return false
+              
+              if (!silent) {
+                const token = state.push('checkbox', '', 0)
+                token.attrs = { checked: char === 'x' }
+              }
+              
+              state.pos = start + (nextChar === ' ' ? 4 : 3)
+              return true
+            })
+            
+            markdownit.renderer.rules.checkbox = () => ''
+          }
+        }
+      }
+    }
+  },
+  
   addNodeView() {
     return ({ node, getPos, editor }) => {
+      const onCheckboxToggle = this.options.onCheckboxToggle
+      
       const wrapper = document.createElement('span')
       wrapper.classList.add('inline-checkbox')
       wrapper.contentEditable = 'false'
@@ -81,6 +131,10 @@ export const CheckboxExtension = Node.create({
             return true
           })
           .run()
+        
+        if (onCheckboxToggle) {
+          onCheckboxToggle(newChecked)
+        }
       })
       
       wrapper.appendChild(button)
@@ -97,6 +151,8 @@ export const CheckboxExtension = Node.create({
   },
   
   addInputRules() {
+    const onCheckboxAdded = this.options.onCheckboxAdded
+    
     return [
       new InputRule({
         find: /^\[( |x)\]\s$/,
@@ -108,9 +164,90 @@ export const CheckboxExtension = Node.create({
           tr.insert(range.from, this.type.create({ checked: isChecked }))
           tr.insertText(' ', range.from + 1)
           
+          if (onCheckboxAdded) {
+            setTimeout(() => onCheckboxAdded(isChecked), 0)
+          }
+          
           return tr
         }
       })
     ]
+  },
+
+  addProseMirrorPlugins() {
+    const extensionThis = this
+    
+    return [
+      new Plugin({
+        key: new PluginKey('checkboxPaste'),
+        props: {
+          transformPasted(slice) {
+            return slice
+          }
+        },
+        appendTransaction: (transactions, oldState, newState) => {
+          const docChanged = transactions.some(tr => tr.docChanged)
+          if (!docChanged) return null
+          
+          let tr = newState.tr
+          let modified = false
+          
+          newState.doc.descendants((node, pos) => {
+            if (node.isText) {
+              const text = node.text
+              const match = text.match(/^\[( |x)\]\s/)
+              if (match) {
+                const isChecked = match[1] === 'x'
+                const checkboxNode = extensionThis.type.create({ checked: isChecked })
+                
+                tr.replaceWith(pos, pos + match[0].length, checkboxNode)
+                modified = true
+                return false
+              }
+            }
+          })
+          
+          return modified ? tr : null
+        }
+      })
+    ]
+  },
+
+  addCommands() {
+    return {
+      setCheckboxChecked: (checked) => ({ editor, tr }) => {
+        let found = false
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === 'checkbox' && !found) {
+            tr.setNodeMarkup(pos, undefined, { checked })
+            found = true
+            return false
+          }
+        })
+        return found
+      },
+      
+      hasCheckbox: () => ({ editor }) => {
+        let found = false
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === 'checkbox') {
+            found = true
+            return false
+          }
+        })
+        return found
+      },
+      
+      getCheckboxState: () => ({ editor }) => {
+        let checked = null
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === 'checkbox') {
+            checked = node.attrs.checked
+            return false
+          }
+        })
+        return checked
+      }
+    }
   }
 })

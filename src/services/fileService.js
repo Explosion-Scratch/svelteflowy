@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store'
-import { itemsToMarkdown, markdownToItems } from '../utils/clipboard.js'
+import { serializeItems, parseText } from '../utils/serializer.js'
 
 const DB_NAME = 'svelteflowy-filehandles'
 const DB_VERSION = 1
@@ -164,7 +164,7 @@ function createFileService() {
         return false
       }
 
-      const markdown = itemsToMarkdown(items)
+      const markdown = serializeItems(items)
       const writable = await handle.createWritable()
       await writable.write(markdown)
       await writable.close()
@@ -198,7 +198,7 @@ function createFileService() {
       fileName.set(handle.name)
       await storeFileHandle(handle)
 
-      const markdown = itemsToMarkdown(items)
+      const markdown = serializeItems(items)
       const writable = await handle.createWritable()
       await writable.write(markdown)
       await writable.close()
@@ -242,7 +242,7 @@ function createFileService() {
 
       const file = await handle.getFile()
       const content = await file.text()
-      const items = markdownToItems(content)
+      const items = parseText(content)
 
       fileHandle.set(handle)
       fileName.set(handle.name)

@@ -2,7 +2,6 @@
   import { createEventDispatcher, tick } from 'svelte'
   import RichEditor from './RichEditor.svelte'
   import Bullet from './Bullet.svelte'
-  import Checkbox from './Checkbox.svelte'
   import Collapse from './Collapse.svelte'
   import ItemMenu from './ItemMenu.svelte'
   import { itemStore } from '../stores/itemStore.js'
@@ -19,22 +18,26 @@
   let showDescriptionEditor = false
   let titleEditorRef
 
-  $: hasCheckboxSyntax = /^\[( |x)\]\s/.test(item.text || '')
-  $: isCheckboxChecked = /^\[x\]\s/.test(item.text || '') || item.completed
-  $: displayText = hasCheckboxSyntax ? item.text.replace(/^\[( |x)\]\s/, '') : item.text
   $: hasDescription = !!item.description?.trim()
   $: hasChildren = item.children?.length > 0
 
   function handleToggleComplete() {
-    if (hasCheckboxSyntax) {
-      const newChecked = !isCheckboxChecked
-      const newText = newChecked
-        ? item.text.replace(/^\[ \]\s/, '[x] ')
-        : item.text.replace(/^\[x\]\s/, '[ ] ')
-      itemStore.updateItem(item.id, { text: newText, completed: newChecked })
-    } else {
-      itemStore.toggleComplete(item.id)
+    const newCompleted = !item.completed
+    itemStore.updateItem(item.id, { completed: newCompleted })
+    
+    if (titleEditorRef?.hasCheckboxNode?.()) {
+      titleEditorRef.setCheckboxState(newCompleted)
     }
+  }
+
+  function handleCheckboxToggle(event) {
+    const checked = event.detail.checked
+    itemStore.updateItem(item.id, { completed: checked })
+  }
+
+  function handleCheckboxAdded(event) {
+    const checked = event.detail.checked
+    itemStore.updateItem(item.id, { hasCheckbox: true, completed: checked })
   }
 
   function handleDelete() {
@@ -106,10 +109,7 @@
   }
 
   function handleTextChange(event) {
-    const newVal = hasCheckboxSyntax 
-      ? (isCheckboxChecked ? '[x] ' : '[ ] ') + event.detail.value
-      : event.detail.value
-    itemStore.updateItem(item.id, { text: newVal })
+    itemStore.updateItem(item.id, { text: event.detail.value })
   }
 
   function handleDescriptionChange(event) {
@@ -193,7 +193,7 @@
   bind:this={itemElement}
   id="item_{item.id}"
   class="item"
-  class:completed={item.completed || isCheckboxChecked}
+  class:completed={item.completed}
   class:selected={isSelected}
   on:contextmenu={handleContextMenu}
 >
@@ -228,16 +228,12 @@
           background={hasChildren && !item.open}
           on:click={handleZoom}
         />
-        {#if hasCheckboxSyntax}
-          <Checkbox 
-            checked={isCheckboxChecked}
-            on:click={handleToggleComplete} 
-          />
-        {/if}
         <div class="title-editor">
           <RichEditor
             bind:this={titleEditorRef}
-            value={displayText}
+            value={item.text}
+            hasCheckbox={item.hasCheckbox || false}
+            completed={item.completed || false}
             showPlaceholder={false}
             {highlightPhrase}
             itemId={item.id}
@@ -252,6 +248,8 @@
             on:shiftselectup={handleShiftSelectUp}
             on:shiftselectdown={handleShiftSelectDown}
             on:togglecomplete={handleToggleComplete}
+            on:checkboxtoggle={handleCheckboxToggle}
+            on:checkboxadded={handleCheckboxAdded}
             on:description={handleShowDescription}
             on:hashtagclick={handleHashtagClick}
             on:itemrefclick={handleItemRefClick}

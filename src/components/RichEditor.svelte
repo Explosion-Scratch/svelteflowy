@@ -26,6 +26,8 @@
   export let editorClass = 'editable'
   export let showPlaceholder = true
   export let itemId = null
+  export let hasCheckbox = false
+  export let completed = false
 
   const dispatch = createEventDispatcher()
 
@@ -171,7 +173,14 @@
           dispatch('shiftselectdown')
         }
       }),
-      CheckboxExtension,
+      CheckboxExtension.configure({
+        onCheckboxToggle: (checked) => {
+          dispatch('checkboxtoggle', { checked })
+        },
+        onCheckboxAdded: (checked) => {
+          dispatch('checkboxadded', { checked })
+        }
+      }),
       AutocompleteExtension.configure({
         triggers: [
           { char: '#', pattern: /#([\w-]*)$/ },
@@ -203,15 +212,23 @@
     editor = new Editor({
       element: editorElement,
       extensions,
-      content: value,
+      content: value || '',
       editorProps: {
         attributes: {
           class: editorClass
         }
       },
+      onCreate: ({ editor: ed }) => {
+        if (hasCheckbox && ed.schema.nodes.checkbox) {
+          ed.commands.insertContentAt(0, {
+            type: 'checkbox',
+            attrs: { checked: completed }
+          })
+          ed.commands.insertContentAt(1, ' ')
+        }
+      },
       onUpdate: ({ editor: ed }) => {
         const markdown = ed.storage.markdown?.getMarkdown() || ed.getText()
-        value = markdown
         dispatch('change', { value: markdown })
       },
       onFocus: () => {
@@ -291,6 +308,37 @@
 
   export function isEmpty() {
     return editor?.isEmpty ?? true
+  }
+
+  export function hasCheckboxNode() {
+    if (!editor) return false
+    let found = false
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'checkbox') {
+        found = true
+        return false
+      }
+    })
+    return found
+  }
+
+  export function setCheckboxState(checked) {
+    if (!editor) return
+    let pos = null
+    editor.state.doc.descendants((node, p) => {
+      if (node.type.name === 'checkbox' && pos === null) {
+        pos = p
+        return false
+      }
+    })
+    if (pos !== null) {
+      editor.chain()
+        .command(({ tr }) => {
+          tr.setNodeMarkup(pos, undefined, { checked })
+          return true
+        })
+        .run()
+    }
   }
 </script>
 

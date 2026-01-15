@@ -273,12 +273,16 @@
           {highlightPhrase}
           showPlaceholder={false}
           itemId={item.id}
+          hasCheckbox={item.hasCheckbox}
+          completed={item.completed}
           on:selectdown={handleTitleSelectDown}
           on:newbullet={handleTitleNewBullet}
           on:description={handleTitleDescription}
           on:change={() => itemStore.updateItem(item.id, { text: item.text })}
           on:hashtagclick={handleHashtagClick}
           on:itemrefclick={handleItemRefClick}
+          on:checkboxtoggle={(e) => itemStore.updateItem(item.id, { completed: e.detail.checked })}
+          on:checkboxadded={(e) => itemStore.updateItem(item.id, { hasCheckbox: true, completed: e.detail.checked })}
         />
       </h1>
 
@@ -311,11 +315,15 @@
           {highlightPhrase}
           showPlaceholder={false}
           itemId={item.id}
+          hasCheckbox={item.hasCheckbox}
+          completed={item.completed}
           on:selectdown={handleTitleSelectDown}
           on:newbullet={handleTitleNewBullet}
           on:change={() => itemStore.updateItem(item.id, { text: item.text })}
           on:hashtagclick={handleHashtagClick}
           on:itemrefclick={handleItemRefClick}
+          on:checkboxtoggle={(e) => itemStore.updateItem(item.id, { completed: e.detail.checked })}
+          on:checkboxadded={(e) => itemStore.updateItem(item.id, { hasCheckbox: true, completed: e.detail.checked })}
         />
       </h2>
     {/key}
