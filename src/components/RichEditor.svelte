@@ -7,6 +7,7 @@
   import LinkModal from './LinkModal.svelte'
   import { allHashtags } from '../stores/hashtagStore.js'
   import { allItems } from '../stores/allItemsStore.js'
+  import { parseDate, formatRelativeTime, formatAbsoluteDate, formatDateForSearch } from '../utils/dateParser.js'
   import TextB from 'phosphor-svelte/lib/TextB'
   import TextItalic from 'phosphor-svelte/lib/TextItalic'
   import TextStrikethrough from 'phosphor-svelte/lib/TextStrikethrough'
@@ -37,6 +38,7 @@
   let autocompleteFrom = 0
   let autocompleteTo = 0
   let currentTrigger = null
+  let parsedDate = null
 
   function handleHashtagClick(hashtag) {
     dispatch('hashtagclick', { hashtag })
@@ -49,21 +51,30 @@
     autocompleteFrom = data.from
     autocompleteTo = data.to
     currentTrigger = data.trigger
+    
+    if (data.trigger === '@' && data.query.trim()) {
+      parsedDate = parseDate(data.query)
+    } else {
+      parsedDate = null
+    }
   }
 
   function handleAutocompleteHide() {
     autocompleteVisible = false
     autocompleteQuery = ''
     currentTrigger = null
+    parsedDate = null
   }
 
   function handleAutocompleteSelect(event) {
     const { item } = event.detail
     if (editor && autocompleteVisible) {
       let insertText
-      if (currentTrigger === '@' && typeof item === 'object') {
+      if (item && item._isDate && item.date) {
+        insertText = `@date[${item.date.toISOString()}] `
+      } else if (currentTrigger === '@' && typeof item === 'object' && item.id) {
         insertText = `@[${item.id}] `
-      } else if (typeof item === 'object') {
+      } else if (typeof item === 'object' && item.text) {
         insertText = item.text + ' '
       } else {
         insertText = item + ' '
@@ -77,10 +88,16 @@
     autocompleteVisible = false
     autocompleteQuery = ''
     currentTrigger = null
+    parsedDate = null
   }
 
   function handleItemRefClick(id) {
     dispatch('itemrefclick', { id })
+  }
+
+  function handleDateClick(date) {
+    const searchStr = `day:${formatDateForSearch(date)}`
+    dispatch('dateclick', { date, searchStr })
   }
 
   function getItemText(id) {
@@ -100,7 +117,10 @@
       handleAutocomplete,
       handleAutocompleteHide,
       handleItemRefClick,
+      handleDateClick,
       getItemText,
+      formatRelativeTime,
+      formatAbsoluteDate,
       bubbleMenuElement,
       showPlaceholder,
       placeholder,
@@ -288,6 +308,7 @@
     items={currentTrigger === '@' ? $allItems.filter(i => i.id !== itemId) : $allHashtags}
     query={autocompleteQuery}
     coords={autocompleteCoords}
+    dateItem={parsedDate}
     on:select={handleAutocompleteSelect}
     on:close={handleAutocompleteHide}
   />
@@ -403,6 +424,24 @@
   :global(.item-ref:hover::after) {
     background: rgba(0, 0, 0, 0.1);
     color: #333;
+  }
+
+  :global(.date-ref) {
+    cursor: pointer;
+    font-size: 0;
+  }
+
+  :global(.date-ref::after) {
+    content: attr(data-display-text);
+    font-size: 1rem;
+    color: var(--accent, #49baf2);
+    background: rgba(73, 186, 242, 0.1);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  :global(.date-ref:hover::after) {
+    background: rgba(73, 186, 242, 0.2);
   }
 
   :global(.search-highlight) {

@@ -26,10 +26,16 @@ export function findItemIndex(parent, id) {
 export function filterTree(tree, query) {
   if (!query?.trim()) return { tree, matches: new Set() }
   
-  const lowerQuery = query.toLowerCase()
   const matches = new Set()
   
+  const dateFilter = parseDateFilter(query)
+  
   function nodeMatches(item) {
+    if (dateFilter) {
+      return itemMatchesDateFilter(item, dateFilter)
+    }
+    
+    const lowerQuery = query.toLowerCase()
     const textMatch = item.text?.toLowerCase().includes(lowerQuery)
     const descMatch = item.description?.toLowerCase().includes(lowerQuery)
     return textMatch || descMatch
@@ -65,6 +71,97 @@ export function filterTree(tree, query) {
   
   const result = filterNode(tree)
   return { tree: result || tree, matches }
+}
+
+function parseDateFilter(query) {
+  const dayMatch = query.match(/^day:(\d{4}-\d{2}-\d{2})$/i)
+  if (dayMatch) {
+    const date = new Date(dayMatch[1])
+    if (!isNaN(date.getTime())) {
+      const start = new Date(date)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(date)
+      end.setHours(23, 59, 59, 999)
+      return { start, end }
+    }
+  }
+  
+  const weekMatch = query.match(/^week:(\d{4}-\d{2}-\d{2})$/i)
+  if (weekMatch) {
+    const date = new Date(weekMatch[1])
+    if (!isNaN(date.getTime())) {
+      const dayOfWeek = date.getDay()
+      const start = new Date(date)
+      start.setDate(date.getDate() - dayOfWeek)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 6)
+      end.setHours(23, 59, 59, 999)
+      return { start, end }
+    }
+  }
+  
+  const monthMatch = query.match(/^month:(\w+)$/i)
+  if (monthMatch) {
+    const monthInput = monthMatch[1]
+    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+    const monthAbbrevs = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+    
+    let monthIndex = -1
+    const input = monthInput.toLowerCase().trim()
+    const numMonth = parseInt(input, 10)
+    
+    if (!isNaN(numMonth) && numMonth >= 1 && numMonth <= 12) {
+      monthIndex = numMonth - 1
+    } else {
+      monthIndex = monthNames.findIndex(m => m.startsWith(input))
+      if (monthIndex === -1) {
+        monthIndex = monthAbbrevs.findIndex(m => m === input)
+      }
+    }
+    
+    if (monthIndex !== -1) {
+      const year = new Date().getFullYear()
+      const start = new Date(year, monthIndex, 1, 0, 0, 0, 0)
+      const end = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999)
+      return { start, end }
+    }
+  }
+  
+  const yearMatch = query.match(/^year:(\d{4})$/i)
+  if (yearMatch) {
+    const year = parseInt(yearMatch[1], 10)
+    if (!isNaN(year) && year >= 1900 && year <= 2200) {
+      const start = new Date(year, 0, 1, 0, 0, 0, 0)
+      const end = new Date(year, 11, 31, 23, 59, 59, 999)
+      return { start, end }
+    }
+  }
+  
+  return null
+}
+
+function itemMatchesDateFilter(item, filter) {
+  const datesInText = extractDatesFromText(item.text || '')
+  const datesInDesc = extractDatesFromText(item.description || '')
+  const allDates = [...datesInText, ...datesInDesc]
+  
+  return allDates.some(date => date >= filter.start && date <= filter.end)
+}
+
+function extractDatesFromText(text) {
+  const dates = []
+  const regex = /@date\[([^\]]+)\]/g
+  let match
+  
+  while ((match = regex.exec(text)) !== null) {
+    const date = new Date(match[1])
+    if (!isNaN(date.getTime())) {
+      dates.push(date)
+    }
+  }
+  
+  return dates
 }
 
 export function flattenTree(tree, depth = 0) {

@@ -1,10 +1,12 @@
 <script>
   import { createEventDispatcher, onMount, onDestroy } from 'svelte'
+  import { formatRelativeTime, formatAbsoluteDate } from '../utils/dateParser.js'
 
   export let items = []
   export let coords = { top: 0, left: 0 }
   export let query = ''
   export let visible = false
+  export let dateItem = null
 
   const dispatch = createEventDispatcher()
 
@@ -25,8 +27,21 @@
     return text?.toLowerCase().includes(query.toLowerCase())
   })
 
-  $: if (filteredItems.length > 0 && selectedIndex >= filteredItems.length) {
-    selectedIndex = filteredItems.length - 1
+  $: dateDisplayItem = dateItem ? {
+    _isDate: true,
+    date: dateItem.date,
+    relativeText: formatRelativeTime(dateItem.date),
+    absoluteText: formatAbsoluteDate(dateItem.date)
+  } : null
+
+  $: allDisplayItems = dateDisplayItem 
+    ? [dateDisplayItem, ...filteredItems]
+    : filteredItems
+
+  $: totalLength = allDisplayItems.length
+
+  $: if (totalLength > 0 && selectedIndex >= totalLength) {
+    selectedIndex = totalLength - 1
   }
 
   function handleKeyDown(event) {
@@ -35,16 +50,16 @@
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       event.stopPropagation()
-      selectedIndex = (selectedIndex + 1) % filteredItems.length
+      selectedIndex = (selectedIndex + 1) % totalLength
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       event.stopPropagation()
-      selectedIndex = (selectedIndex - 1 + filteredItems.length) % filteredItems.length
+      selectedIndex = (selectedIndex - 1 + totalLength) % totalLength
     } else if (event.key === 'Enter' || event.key === 'Tab') {
-      if (filteredItems.length > 0) {
+      if (totalLength > 0) {
         event.preventDefault()
         event.stopPropagation()
-        selectItem(filteredItems[selectedIndex])
+        selectItem(allDisplayItems[selectedIndex])
       }
     } else if (event.key === 'Escape') {
       event.preventDefault()
@@ -66,22 +81,37 @@
   })
 </script>
 
-{#if visible && filteredItems.length > 0}
+{#if visible && totalLength > 0}
   <div 
     bind:this={menuElement}
     class="autocomplete-menu"
     style="top: {coords.bottom + 4}px; left: {coords.left}px;"
   >
-    {#each filteredItems as item, index}
-      <button
-        type="button"
-        class="autocomplete-item"
-        class:selected={index === selectedIndex}
-        on:click={() => selectItem(item)}
-        on:mouseenter={() => selectedIndex = index}
-      >
-        {truncateText(getItemText(item))}
-      </button>
+    {#each allDisplayItems as item, index}
+      {#if item._isDate}
+        <button
+          type="button"
+          class="autocomplete-item date-item"
+          class:selected={index === selectedIndex}
+          on:click={() => selectItem(item)}
+          on:mouseenter={() => selectedIndex = index}
+          title={item.absoluteText}
+        >
+          <span class="date-icon">📅</span>
+          <span class="date-relative">{item.relativeText}</span>
+          <span class="date-absolute">{item.absoluteText}</span>
+        </button>
+      {:else}
+        <button
+          type="button"
+          class="autocomplete-item"
+          class:selected={index === selectedIndex}
+          on:click={() => selectItem(item)}
+          on:mouseenter={() => selectedIndex = index}
+        >
+          {truncateText(getItemText(item))}
+        </button>
+      {/if}
     {/each}
   </div>
 {/if}
@@ -95,7 +125,7 @@
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     min-width: 140px;
-    max-width: 260px;
+    max-width: 280px;
     max-height: 180px;
     overflow-y: auto;
     padding: 3px;
@@ -120,5 +150,30 @@
   .autocomplete-item.selected {
     background: rgba(0, 0, 0, 0.05);
     color: #333;
+  }
+
+  .autocomplete-item.date-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    margin-bottom: 2px;
+    padding-bottom: 8px;
+  }
+
+  .date-icon {
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .date-relative {
+    font-weight: 500;
+    color: var(--accent, #49baf2);
+  }
+
+  .date-absolute {
+    font-size: 11px;
+    color: #999;
+    margin-left: auto;
   }
 </style>

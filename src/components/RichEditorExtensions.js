@@ -10,6 +10,7 @@ import { KeyboardExtension } from '../extensions/KeyboardExtension.js'
 import { CheckboxExtension } from '../extensions/CheckboxExtension.js'
 import { AutocompleteExtension } from '../extensions/AutocompleteExtension.js'
 import { ItemReferenceExtension } from '../extensions/ItemReferenceExtension.js'
+import { DateReferenceExtension } from '../extensions/DateReferenceExtension.js'
 
 export function getExtensions({
   isDescription,
@@ -19,11 +20,14 @@ export function getExtensions({
   handleAutocomplete,
   handleAutocompleteHide,
   handleItemRefClick,
+  handleDateClick,
   getItemText,
+  formatRelativeTime,
+  formatAbsoluteDate,
   bubbleMenuElement,
   showPlaceholder,
   placeholder,
-  getEditor // function returning editor instance
+  getEditor
 }) {
   const extensions = [
     StarterKit.configure({
@@ -121,6 +125,11 @@ export function getExtensions({
     ItemReferenceExtension.configure({
       onItemRefClick: handleItemRefClick,
       getItemText: getItemText
+    }),
+    DateReferenceExtension.configure({
+      onDateClick: handleDateClick,
+      formatRelativeTime: formatRelativeTime,
+      formatAbsoluteDate: formatAbsoluteDate
     }),
     BubbleMenu.configure({
       element: bubbleMenuElement,

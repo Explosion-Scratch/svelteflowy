@@ -47,6 +47,13 @@
     }
   }, 1000)
 
+  // Reset scroll when zoom changes
+  $: if ($zoomedItemId || $zoomedItemId === null) {
+      if (containerRef) {
+        containerRef.scrollTop = 0;
+      }
+  }
+
   items.subscribe(() => {
     if (isInitialLoad) {
       isInitialLoad = false
@@ -697,6 +704,7 @@
       item={$filteredItems.tree}
       isTop={true}
       highlightPhrase={$highlightPhrase}
+      activeZoomedItemId={$zoomedItemId}
     />
   </div>
 </div>

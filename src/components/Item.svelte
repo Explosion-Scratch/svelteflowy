@@ -7,6 +7,7 @@
   import { itemStore } from '../stores/itemStore.js'
   import { parseStatusPrefix } from '../utils/serializer.js'
   import { focusItem, focusDescription } from '../utils/focus.js'
+  import { send, receive } from '../utils/transitions.js'
 
   export let item
   export let isSelected = false
@@ -21,6 +22,7 @@
 
   $: hasDescription = !!item.description?.trim()
   $: hasChildren = item.children?.length > 0
+  
   $: editorValue = item.hasCheckbox 
     ? (item.completed ? '[x] ' : '[ ] ') + (item.text || '')
     : (item.text || '')
@@ -114,6 +116,10 @@
 
   function handleItemRefClick(event) {
     itemStore.navigateToItem(event.detail.id)
+  }
+
+  function handleDateClick(event) {
+    itemStore.setSearch(event.detail.searchStr)
   }
 
   function handleTextChange(event) {
@@ -246,7 +252,11 @@
           background={hasChildren && !item.open}
           on:click={handleZoom}
         />
-        <div class="title-editor">
+        <div 
+          class="title-editor"
+          in:receive={{key: 'title_' + item.id}}
+          out:send={{key: 'title_' + item.id}}
+        >
           <RichEditor
             bind:this={titleEditorRef}
             value={editorValue}
@@ -270,12 +280,17 @@
             on:description={handleShowDescription}
             on:hashtagclick={handleHashtagClick}
             on:itemrefclick={handleItemRefClick}
+            on:dateclick={handleDateClick}
           />
         </div>
       </div>
 
       {#if hasDescription || showDescriptionEditor}
-        <div class="description-editor">
+        <div 
+          class="description-editor"
+          in:receive={{key: 'desc_' + item.id}}
+          out:send={{key: 'desc_' + item.id}}
+        >
           <RichEditor
             bind:value={item.description}
             isDescription={true}
@@ -288,6 +303,7 @@
             on:togglecomplete={handleToggleComplete}
             on:hashtagclick={handleHashtagClick}
             on:itemrefclick={handleItemRefClick}
+            on:dateclick={handleDateClick}
           />
         </div>
       {/if}
@@ -378,8 +394,4 @@
     min-width: 0;
   }
 
-  .description-editor {
-    margin-left: 1.3rem;
-    font-size: 0.85rem;
-  }
 </style>
