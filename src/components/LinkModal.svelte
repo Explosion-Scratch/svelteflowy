@@ -54,6 +54,8 @@
     if (event.key === 'Escape') {
       event.stopPropagation()
       close()
+    } else if (event.key === 'Enter') {
+      event.stopPropagation()
     }
   }
 
@@ -62,6 +64,8 @@
     const isModifier = event.metaKey || event.ctrlKey || event.altKey
     
     if (key === 'Enter') {
+      event.stopPropagation()
+      handleSubmit(event)
       return
     }
     

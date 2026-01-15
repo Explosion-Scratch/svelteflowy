@@ -626,10 +626,10 @@
     dropIndicatorX = null
     dragDropStore.endDrag()
     
-    if (hadDragBox) {
+    if (hadDragBox || wasItemDragging || wasDragging) {
       justFinishedDragSelection = true
       
-      if ($selection.size > 0) {
+      if ($selection.size > 0 && wasDragging) {
         const activeEl = document.activeElement
         if (activeEl && activeEl.closest('[contenteditable]')) {
           activeEl.blur()
@@ -669,9 +669,7 @@
       return
     }
     
-    if (event.target.closest('.item') || 
-        event.target.closest('button') || 
-        event.target.closest('[contenteditable]') ||
+    if (event.target.closest('button') || 
         event.target.closest('.empty-slot') ||
         event.target.closest('.empty-area')) {
       return

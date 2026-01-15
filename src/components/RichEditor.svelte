@@ -254,7 +254,7 @@
   }
 </script>
 
-<div class="rich-editor-wrapper" class:description={isDescription}>
+<div class="rich-editor-wrapper" class:description={isDescription} class:zoomed-root={isZoomedRoot}>
   <div
     bind:this={editorElement}
     class="editor-container"
@@ -345,13 +345,33 @@
   .description :global(.editable) {
     font-size: 0.85em;
     opacity: 0.7;
+    line-height: 1.25;
   }
 
   .description :global(.editable:not(:focus)) {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-height: 1.5em;
+    max-height: 1.1em;
+    line-height: 1.1;
+    display: block;
+  }
+
+  .description :global(.editable:not(:focus) p) {
+    display: inline;
+  }
+
+  .zoomed-root :global(.editable) {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    max-height: none !important;
+    line-height: 1.4 !important;
+  }
+
+  .zoomed-root :global(.editable p) {
+    display: block !important;
+    margin-bottom: 0.5em !important;
   }
 
   .bubble-menu {

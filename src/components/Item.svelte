@@ -385,4 +385,7 @@
     min-width: 0;
   }
 
+  .description-editor {
+    margin-left: calc(1em + 0.3rem);
+  }
 </style>
