@@ -1,0 +1,1 @@
+{"name":"SvelteFlowy","short_name":"SvelteFlowy","description":"An outliner app inspired by Workflowy","start_url":"/","display":"standalone","background_color":"#ffffff","theme_color":"#49baf2","lang":"en","scope":"./","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
