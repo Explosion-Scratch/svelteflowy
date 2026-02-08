@@ -4,6 +4,7 @@
   import { itemStore } from '../stores/itemStore.js'
   import { get } from 'svelte/store'
 
+  import iconSvg from '/icon.svg'
   const dispatch = createEventDispatcher()
 
   async function handleOpen() {
@@ -35,7 +36,7 @@
 <div class="homepage">
   <div class="content">
     <div class="logo-section">
-      <img src="/icon.svg" alt="SvelteFlowy" class="logo" />
+      <img src={iconSvg} alt="SvelteFlowy" class="logo" />
       <h1 class="title">SvelteFlowy</h1>
     </div>
 
